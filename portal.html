@@ -1,0 +1,583 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Madero Capital · Portal de marcas</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500&family=Figtree:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<style>
+/* Layout: barra superior sobria; a la izquierda la lista de búsquedas, a la derecha el mapa; edición en panel lateral */
+:root{
+  --bg:#ffffff; --soft:#f6f5f2; --line:#e4e1da; --line2:#d3cec4; --ink:#141414; --muted:#6b665d; --gold:#a8863a; --gold-soft:#f4ecda;
+  --ok:#2f7a4c; --ok-soft:#e2f0e6; --warn:#9a5d12; --warn-soft:#f6ead8; --bad:#a8402c; --bad-soft:#f6e1db;
+  --f-display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --f-body:"Figtree","Segoe UI",system-ui,-apple-system,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-body)}
+[hidden]{display:none!important}
+h1,h2,h3{font-family:var(--f-display);font-weight:500;letter-spacing:-.01em;margin:0;text-wrap:balance}
+button,input,select,textarea{font:inherit;color:inherit}
+input,select,textarea{background:var(--bg);border:1px solid var(--line2);border-radius:4px;padding:9px 11px;width:100%;min-width:0}
+textarea{min-height:76px;resize:vertical}
+input[type=number]{font-variant-numeric:tabular-nums}
+label{display:flex;flex-direction:column;gap:5px;font-size:13px;font-weight:500;min-width:0}
+label small{font-weight:400;color:var(--muted)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--line2);background:var(--bg);border-radius:4px;padding:9px 14px;cursor:pointer;font-weight:500;white-space:nowrap;text-decoration:none}
+.btn:hover{border-color:var(--ink)}
+.btn.pri{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.btn.pri:hover{background:#2c2c2c}
+.btn.sm{padding:5px 10px;font-size:13px}
+.btn.ghost{border-color:transparent;color:var(--muted)}
+.btn.ghost:hover{color:var(--ink)}
+.btn.danger{color:var(--bad);border-color:var(--bad-soft)}
+.btn:disabled{opacity:.5;cursor:default}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.label{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);font-weight:600}
+.muted{color:var(--muted)}
+.msg{font-size:14px;min-height:1.4em;margin:0}
+.msg.err{color:var(--bad)} .msg.ok{color:var(--ok)}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:2px 10px;font-size:12.5px;font-weight:600;white-space:nowrap;background:var(--soft);color:var(--muted)}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.pill.Activa{background:var(--ok-soft);color:var(--ok)}
+.pill.Pausada{background:var(--warn-soft);color:var(--warn)}
+.pill.Cerrada{background:var(--soft);color:var(--muted)}
+.pill.Pendiente{background:var(--soft);color:var(--muted)}
+.pill.Ofrecida{background:var(--gold-soft);color:#7a5e1c}
+.pill.Cubierta{background:var(--ok-soft);color:var(--ok)}
+.pill.Descartada{background:var(--bad-soft);color:var(--bad)}
+
+/* barra */
+.top{display:flex;align-items:center;gap:12px;padding:12px max(16px,3vw);border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:500}
+.top img{width:34px;height:34px;border-radius:5px;display:block}
+.top .word{font-family:var(--f-display);letter-spacing:.16em;font-size:14px}
+.top .sub{color:var(--muted);font-size:13px;padding-left:12px;border-left:1px solid var(--line)}
+.top .grow{flex:1}
+.top .who{font-size:13.5px;color:var(--muted);text-align:right;line-height:1.3}
+.top .who b{color:var(--ink);font-weight:600;display:block}
+@media (max-width:640px){.top .sub,.top .word{display:none}}
+
+/* acceso */
+.auth{max-width:440px;margin:56px auto;padding:0 16px;display:grid;gap:22px}
+.auth h1{font-size:32px;line-height:1.1}
+.auth p{margin:0;color:var(--muted)}
+.tabs{display:flex;border-bottom:1px solid var(--line)}
+.tabs button{background:none;border:0;padding:10px 4px;margin-right:22px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--gold)}
+.form{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form .full{grid-column:1/-1}
+.form .btn.pri{grid-column:1/-1;padding:12px}
+.linkbtn{background:none;border:0;padding:0;color:var(--muted);text-decoration:underline;text-underline-offset:3px;cursor:pointer;font-size:13.5px;justify-self:start}
+.note{background:var(--soft);border-left:3px solid var(--gold);padding:14px 16px;font-size:14.5px}
+
+/* tablero de marca */
+.board{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);height:calc(100vh - 59px)}
+.listcol{display:flex;flex-direction:column;min-width:0;border-right:1px solid var(--line)}
+.lhead{padding:22px max(16px,2.4vw) 14px;display:grid;gap:14px;border-bottom:1px solid var(--line)}
+.lhead h1{font-size:26px}
+.stats{display:flex;gap:8px;flex-wrap:wrap}
+.stat{border:1px solid var(--line);background:var(--bg);border-radius:4px;padding:7px 12px;cursor:pointer;display:flex;gap:8px;align-items:baseline;font-size:13.5px;color:var(--muted)}
+.stat b{font-family:var(--f-display);font-weight:500;font-size:19px;color:var(--ink);font-variant-numeric:tabular-nums}
+.stat[aria-pressed="true"]{border-color:var(--ink);box-shadow:inset 0 -2px 0 var(--gold)}
+.tools{display:flex;gap:8px;flex-wrap:wrap}
+.tools input{flex:1 1 200px;width:auto}
+.rows{overflow-y:auto;flex:1}
+.row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 12px;padding:13px max(16px,2.4vw);border-bottom:1px solid var(--line);cursor:pointer}
+.row:hover,.row.sel{background:var(--soft)}
+.row .t{font-weight:600;overflow-wrap:anywhere}
+.row .m{color:var(--muted);font-size:13.5px;overflow-wrap:anywhere}
+.row .r{grid-row:1/3;grid-column:2;display:flex;flex-direction:column;align-items:flex-end;gap:6px;font-size:12.5px;color:var(--muted);white-space:nowrap}
+.empty{padding:40px max(16px,2.4vw);color:var(--muted);display:grid;gap:12px;justify-items:start}
+.mapcol{position:relative;min-width:0}
+#map{position:absolute;inset:0}
+.leaflet-container{font:inherit}
+.mk{width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25)}
+@media (max-width:900px){.board{grid-template-columns:1fr;height:auto}.listcol{border-right:0}.mapcol{height:55vh;order:-1}.rows{overflow:visible}}
+
+/* panel de edición */
+.scrim{position:fixed;inset:0;background:rgba(20,20,20,.28);z-index:900}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(720px,100%);background:var(--bg);z-index:901;display:flex;flex-direction:column;box-shadow:-10px 0 40px rgba(0,0,0,.12)}
+.dhead{display:flex;gap:12px;align-items:flex-start;padding:18px 22px;border-bottom:1px solid var(--line)}
+.dhead h2{font-size:22px;flex:1;overflow-wrap:anywhere}
+.dbody{flex:1;overflow-y:auto;padding:18px 22px 28px;display:grid;gap:22px;align-content:start}
+.sec{display:grid;gap:12px}
+.sec h3{font-size:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.grid3 .full,.grid2 .full{grid-column:1/-1}
+@media (max-width:560px){.grid3,.grid2{grid-template-columns:1fr}}
+#emap{height:280px;border:1px solid var(--line);border-radius:4px}
+.addr{position:relative;display:flex;gap:8px}
+.addr input{flex:1}
+.sug{position:absolute;left:0;right:0;top:calc(100% + 4px);background:var(--bg);border:1px solid var(--line2);border-radius:4px;box-shadow:0 8px 24px rgba(0,0,0,.1);z-index:1000;max-height:260px;overflow:auto}
+.sug button{display:block;width:100%;text-align:left;background:none;border:0;border-top:1px solid var(--line);padding:9px 12px;cursor:pointer;font-size:14px}
+.sug button:first-child{border-top:0}
+.sug button:hover{background:var(--soft)}
+.pts{display:grid;gap:0;border:1px solid var(--line);border-radius:4px}
+.pt{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:9px 12px;border-top:1px solid var(--line)}
+.pt:first-child{border-top:0}
+.pt .n{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;width:22px}
+.pt input{padding:6px 8px}
+.pt .acts{display:flex;gap:6px;align-items:center}
+.hint{font-size:13px;color:var(--muted)}
+.modebar{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.modebar .on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.dfoot{display:flex;gap:10px;align-items:center;padding:14px 22px;border-top:1px solid var(--line);flex-wrap:wrap}
+.dfoot .grow{flex:1}
+.confirm{display:flex;gap:8px;align-items:center;background:var(--bad-soft);color:var(--bad);padding:6px 10px;border-radius:4px;font-size:14px;flex-wrap:wrap}
+
+/* importar */
+.imp{display:grid;gap:14px}
+.drop{border:1.5px dashed var(--line2);border-radius:6px;padding:26px;text-align:center;color:var(--muted);cursor:pointer}
+.drop.over{border-color:var(--gold);background:var(--gold-soft)}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:4px}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{text-align:left;padding:8px 10px;border-top:1px solid var(--line);vertical-align:top}
+th{border-top:0;background:var(--soft);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);white-space:nowrap}
+.bar{height:6px;background:var(--soft);border-radius:3px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--gold);width:0;transition:width .2s}
+
+/* equipo */
+.team{max-width:1180px;margin:0 auto;padding:26px max(16px,3vw) 60px;display:grid;gap:22px}
+.team h1{font-size:28px}
+.tcards{display:grid;gap:0;border:1px solid var(--line);border-radius:4px}
+.tcard{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:6px 16px;padding:14px 16px;border-top:1px solid var(--line);align-items:center}
+.tcard:first-child{border-top:0}
+.tcard .m{color:var(--muted);font-size:13.5px;overflow-wrap:anywhere}
+.tcard .acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;align-items:center}
+.tcard select{width:auto}
+.badge{display:inline-block;background:var(--warn-soft);color:var(--warn);font-size:12px;font-weight:600;border-radius:999px;padding:1px 9px;margin-left:6px}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:6px;z-index:2000;font-weight:500;max-width:calc(100% - 32px);text-align:center}
+.banner{background:var(--gold-soft);border-bottom:1px solid var(--line);padding:9px max(16px,3vw);font-size:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <img id="logo" alt="Madero Capital">
+  <span class="word">MADERO CAPITAL</span>
+  <span class="sub">Portal de marcas</span>
+  <span class="grow"></span>
+  <span class="who" id="who" hidden></span>
+  <button class="btn sm" id="salir" hidden>Salir</button>
+</header>
+<div class="banner" id="asbanner" hidden></div>
+
+<!-- ACCESO -->
+<main id="v-auth" class="auth" hidden>
+  <div style="display:grid;gap:8px">
+    <span class="label">Marcas</span>
+    <h1>Gestioná tus búsquedas de locales</h1>
+    <p>Cargá todas las ubicaciones que busca tu marca y actualizalas a medida que avanzás. Solo las ve tu equipo y el de Madero Capital.</p>
+  </div>
+  <div class="tabs" role="tablist">
+    <button role="tab" id="t-in" aria-selected="true">Ingresar</button>
+    <button role="tab" id="t-reg" aria-selected="false">Crear cuenta</button>
+  </div>
+  <form id="f-in" class="form" novalidate>
+    <label class="full">Email<input id="in-email" type="email" autocomplete="email" required></label>
+    <label class="full">Contraseña<input id="in-pass" type="password" autocomplete="current-password" required></label>
+    <button class="btn pri" type="submit">Ingresar</button>
+    <button class="linkbtn full" type="button" id="olvide">Olvidé mi contraseña</button>
+    <p class="msg full" aria-live="polite"></p>
+  </form>
+  <form id="f-reg" class="form" novalidate hidden>
+    <label class="full">Marca o empresa<input id="r-marca" required autocomplete="organization"></label>
+    <label>Tu nombre<input id="r-nombre" required autocomplete="name"></label>
+    <label>Cargo<input id="r-cargo" placeholder="Ej.: Gerente de expansión"></label>
+    <label>Rubro<input id="r-rubro" placeholder="Ej.: Gastronomía"></label>
+    <label>Teléfono<input id="r-tel" type="tel" autocomplete="tel"></label>
+    <label class="full">Email de trabajo<input id="r-email" type="email" required autocomplete="email"></label>
+    <label class="full">Contraseña <small>mínimo 8 caracteres</small><input id="r-pass" type="password" required minlength="8" autocomplete="new-password"></label>
+    <button class="btn pri" type="submit">Crear cuenta</button>
+    <p class="msg full" aria-live="polite"></p>
+  </form>
+  <form id="f-reset" class="form" novalidate hidden>
+    <p class="full">Ingresá tu email y te mandamos un enlace para crear una contraseña nueva.</p>
+    <label class="full">Email<input id="rs-email" type="email" required autocomplete="email"></label>
+    <button class="btn pri" type="submit">Enviar enlace</button>
+    <button class="linkbtn full" type="button" id="volver">Volver a ingresar</button>
+    <p class="msg full" aria-live="polite"></p>
+  </form>
+</main>
+
+<!-- NUEVA CONTRASEÑA -->
+<main id="v-clave" class="auth" hidden>
+  <h1>Elegí una contraseña nueva</h1>
+  <form id="f-clave" class="form" novalidate>
+    <label class="full">Contraseña nueva <small>mínimo 8 caracteres</small><input id="c-pass" type="password" minlength="8" required autocomplete="new-password"></label>
+    <button class="btn pri" type="submit">Guardar contraseña</button>
+    <p class="msg full" aria-live="polite"></p>
+  </form>
+</main>
+
+<!-- PENDIENTE -->
+<main id="v-pend" class="auth" hidden>
+  <span class="label">Cuenta creada</span>
+  <h1 id="pend-t">Estamos revisando tu cuenta</h1>
+  <p id="pend-p">El equipo de Madero Capital va a habilitar el acceso de tu marca en las próximas horas hábiles. Cuando esté lista vas a poder cargar tus búsquedas desde acá.</p>
+  <button class="btn" id="pend-re">Volver a revisar</button>
+</main>
+
+<!-- MARCA -->
+<main id="v-marca" hidden>
+  <div class="board">
+    <section class="listcol">
+      <div class="lhead">
+        <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-end;flex-wrap:wrap">
+          <div style="display:grid;gap:4px"><span class="label" id="m-label">Búsquedas</span><h1 id="m-nombre"></h1></div>
+          <div class="tools"><button class="btn" id="b-imp">Importar planilla</button><button class="btn pri" id="b-new">Nueva búsqueda</button></div>
+        </div>
+        <div class="stats" id="stats"></div>
+        <div class="tools"><input id="q" type="search" placeholder="Buscar por título, zona o dirección" aria-label="Buscar búsquedas"></div>
+      </div>
+      <div class="rows" id="rows"></div>
+    </section>
+    <section class="mapcol"><div id="map" aria-label="Mapa de ubicaciones buscadas"></div></section>
+  </div>
+</main>
+
+<!-- EQUIPO -->
+<main id="v-equipo" class="team" hidden>
+  <div style="display:grid;gap:6px"><span class="label">Equipo Madero Capital</span><h1>Marcas y locales</h1></div>
+  <div class="tabs" role="tablist">
+    <button role="tab" id="te-marcas" aria-selected="true">Marcas <span id="n-pend"></span></button>
+    <button role="tab" id="te-locales" aria-selected="false">Locales postulados <span id="n-loc"></span></button>
+  </div>
+  <section id="pe-marcas" class="sec"></section>
+  <section id="pe-locales" class="sec" hidden></section>
+</main>
+
+<div id="layer"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="config.js"></script>
+<script src="logo.js"></script>
+<script>
+'use strict';
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmt=n=>n==null||n===''?'':Number(n).toLocaleString('es-AR');
+const num=v=>v===''||v==null?null:Number(String(v).replace(/\./g,'').replace(',','.'));
+const fdate=t=>t?new Date(t).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}):'';
+function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.append(d);setTimeout(()=>d.remove(),3200)}
+if(window.MADERO_LOGO)$('#logo').src=window.MADERO_LOGO;
+
+const CFG=window.MADERO||{};
+const sb=supabase.createClient(CFG.supabaseUrl,CFG.supabaseKey,{auth:{persistSession:true,detectSessionInUrl:true}});
+const S={user:null,equipo:false,marca:null,busq:[],filtro:'Activa',q:'',sel:null,viewAs:null};
+const VIEWS=['v-auth','v-clave','v-pend','v-marca','v-equipo'];
+function show(v){VIEWS.forEach(id=>$('#'+id).hidden=id!==v)}
+const ESTADOS=['Activa','Pausada','Cerrada'];
+const pendingRecovery=/type=recovery/.test(location.hash);
+
+/* ---------------- acceso ---------------- */
+function authTab(t){$('#t-in').setAttribute('aria-selected',t==='in');$('#t-reg').setAttribute('aria-selected',t==='reg');$('#f-in').hidden=t!=='in';$('#f-reg').hidden=t!=='reg';$('#f-reset').hidden=t!=='reset'}
+$('#t-in').onclick=()=>authTab('in');$('#t-reg').onclick=()=>authTab('reg');
+$('#olvide').onclick=()=>{$('#rs-email').value=$('#in-email').value;authTab('reset')};$('#volver').onclick=()=>authTab('in');
+const say=(f,t,k='err')=>{const m=$('.msg',f);m.className='msg full '+k;m.textContent=t};
+function errEs(e){const m=(e&&e.message)||'';
+  if(/Invalid login/i.test(m))return 'El email o la contraseña no coinciden.';
+  if(/Email not confirmed/i.test(m))return 'Todavía no confirmaste tu email. Revisá tu casilla (y la carpeta de spam).';
+  if(/already registered|already been registered/i.test(m))return 'Ya hay una cuenta con ese email. Ingresá o pedí una contraseña nueva.';
+  if(/Password should be/i.test(m))return 'La contraseña tiene que tener al menos 8 caracteres.';
+  if(/rate limit|too many/i.test(m))return 'Hubo demasiados intentos. Esperá unos minutos y probá de nuevo.';
+  return 'No se pudo completar. Probá de nuevo en unos minutos.'}
+
+$('#f-in').addEventListener('submit',async e=>{e.preventDefault();const f=e.target;
+  const email=$('#in-email').value.trim(),password=$('#in-pass').value;if(!email||!password)return say(f,'Completá email y contraseña.');
+  $('button[type=submit]',f).disabled=true;say(f,'Ingresando…','');
+  const {error}=await sb.auth.signInWithPassword({email,password});$('button[type=submit]',f).disabled=false;
+  if(error)say(f,errEs(error));else say(f,'','')});
+
+$('#f-reg').addEventListener('submit',async e=>{e.preventDefault();const f=e.target;
+  const d={marca:$('#r-marca').value.trim(),nombre:$('#r-nombre').value.trim(),cargo:$('#r-cargo').value.trim(),rubro:$('#r-rubro').value.trim(),telefono:$('#r-tel').value.trim()};
+  const email=$('#r-email').value.trim(),password=$('#r-pass').value;
+  if(!d.marca||!d.nombre||!email)return say(f,'Completá marca, nombre y email.');
+  if(!$('#r-email').checkValidity())return say(f,'Revisá el email: parece incompleto.');
+  if(password.length<8)return say(f,'La contraseña tiene que tener al menos 8 caracteres.');
+  $('button[type=submit]',f).disabled=true;say(f,'Creando la cuenta…','');
+  const {data,error}=await sb.auth.signUp({email,password,options:{data:d,emailRedirectTo:location.origin+location.pathname}});
+  $('button[type=submit]',f).disabled=false;
+  if(error)return say(f,errEs(error));
+  if(!data.session){f.reset();say(f,'Listo. Te mandamos un mail para confirmar tu dirección; después ingresá con tu email y contraseña.','ok')}});
+
+$('#f-reset').addEventListener('submit',async e=>{e.preventDefault();const f=e.target;const email=$('#rs-email').value.trim();
+  if(!email)return say(f,'Ingresá tu email.');
+  const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});
+  if(error)say(f,errEs(error));else say(f,'Si hay una cuenta con ese email, te llega un enlace en unos minutos.','ok')});
+
+$('#f-clave').addEventListener('submit',async e=>{e.preventDefault();const f=e.target;const p=$('#c-pass').value;
+  if(p.length<8)return say(f,'La contraseña tiene que tener al menos 8 caracteres.');
+  const {error}=await sb.auth.updateUser({password:p});if(error)return say(f,errEs(error));
+  history.replaceState(null,'',location.pathname);toast('Contraseña actualizada');route()});
+
+$('#salir').onclick=async()=>{await sb.auth.signOut();location.hash='';location.reload()};
+$('#pend-re').onclick=()=>route();
+
+sb.auth.onAuthStateChange((ev,session)=>{
+  if(ev==='PASSWORD_RECOVERY'){S.user=session?.user||null;show('v-clave');return}
+  if(ev==='SIGNED_IN'||ev==='SIGNED_OUT'||ev==='INITIAL_SESSION'){if(pendingRecovery&&ev!=='SIGNED_OUT')return;setTimeout(route,0)}
+});
+
+/* ---------------- ruteo según quién entra ---------------- */
+let routing=false;
+async function route(){if(routing)return;routing=true;try{
+  const {data:{session}}=await sb.auth.getSession();S.user=session?.user||null;
+  $('#who').hidden=$('#salir').hidden=!S.user;
+  if(!S.user){show('v-auth');if(location.hash==='#registro')authTab('reg');return}
+  const {data:eq}=await sb.from('equipo').select('user_id,nombre').eq('user_id',S.user.id).maybeSingle();
+  S.equipo=!!eq;
+  if(S.equipo){$('#who').innerHTML=`<b>${esc(eq.nombre||S.user.email)}</b>Equipo Madero Capital`;if(S.viewAs)openMarca(S.viewAs);else openEquipo();return}
+  const {data:mi}=await sb.from('miembros').select('nombre,marca_id,marcas(id,nombre,aprobada,rechazada)').eq('user_id',S.user.id).maybeSingle();
+  if(!mi||!mi.marcas){$('#who').innerHTML=`<b>${esc(S.user.email)}</b>`;show('v-pend');$('#pend-t').textContent='Tu cuenta no tiene una marca asociada';$('#pend-p').textContent='Escribile al equipo de Madero Capital para que la vinculen.';return}
+  $('#who').innerHTML=`<b>${esc(mi.nombre||S.user.email)}</b>${esc(mi.marcas.nombre)}`;
+  if(mi.marcas.rechazada){show('v-pend');$('#pend-t').textContent='No pudimos habilitar esta cuenta';$('#pend-p').textContent='Si creés que es un error, escribile al equipo de Madero Capital.';return}
+  if(!mi.marcas.aprobada){show('v-pend');return}
+  openMarca(mi.marcas);
+}finally{routing=false}}
+
+/* ---------------- tablero de la marca ---------------- */
+let map=null,layer=null;
+async function openMarca(m){S.marca=m;show('v-marca');
+  $('#m-nombre').textContent=m.nombre;
+  $('#asbanner').hidden=!S.equipo;
+  if(S.equipo){$('#asbanner').innerHTML=`Estás viendo las búsquedas de <b>${esc(m.nombre)}</b> como equipo de Madero Capital. <button class="btn sm" id="as-back">Volver al panel</button>`;$('#as-back').onclick=()=>{S.viewAs=null;$('#asbanner').hidden=true;openEquipo()}}
+  if(!map){map=L.map('map',{zoomControl:true}).setView([-34.61,-58.44],12);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19,attribution:'© OpenStreetMap · © CARTO'}).addTo(map);layer=L.layerGroup().addTo(map)}
+  setTimeout(()=>map.invalidateSize(),50);
+  await loadBusq();
+}
+async function loadBusq(){
+  const {data,error}=await sb.from('busquedas').select('*,puntos(*)').eq('marca_id',S.marca.id).eq('borrado',false).order('actualizado',{ascending:false});
+  if(error){toast('No se pudieron cargar las búsquedas. Recargá la página.');return}
+  S.busq=data.map(b=>({...b,puntos:(b.puntos||[]).filter(p=>!p.borrado).sort((x,y)=>x.creado.localeCompare(y.creado))}));
+  renderList();fitMap();
+}
+const m2txt=(a,b)=>a&&b?`${fmt(a)} a ${fmt(b)} m²`:a?`desde ${fmt(a)} m²`:b?`hasta ${fmt(b)} m²`:'';
+const titulo=b=>b.titulo||[m2txt(b.m2min,b.m2max),b.zonas].filter(Boolean).join(' · ')||'Búsqueda sin título';
+const colorE={Activa:'#2f7a4c',Pausada:'#c88a2a',Cerrada:'#9a948a'};
+function visibles(){const q=S.q.toLowerCase();return S.busq.filter(b=>(S.filtro==='Todas'||b.estado===S.filtro)&&(!q||[b.titulo,b.zonas,b.requisitos,...b.puntos.map(p=>p.nombre+' '+(p.barrio||''))].join(' ').toLowerCase().includes(q)))}
+function renderList(){
+  const c={Activa:0,Pausada:0,Cerrada:0};S.busq.forEach(b=>c[b.estado]++);const ub=S.busq.filter(b=>b.estado==='Activa').reduce((a,b)=>a+b.puntos.length,0);
+  $('#stats').innerHTML=[...ESTADOS.map(e=>[e,c[e],e==='Activa'?'activas':e==='Pausada'?'pausadas':'cerradas']),['Todas',S.busq.length,'en total']].map(([k,n,l])=>`<button class="stat" data-f="${k}" aria-pressed="${S.filtro===k}"><b>${n}</b>${l}</button>`).join('')+`<span class="stat" style="cursor:default"><b>${ub}</b>ubicaciones activas</span>`;
+  $$('#stats [data-f]').forEach(b=>b.onclick=()=>{S.filtro=b.dataset.f;renderList();fitMap()});
+  const L_=visibles();
+  $('#rows').innerHTML=L_.length?L_.map(b=>`<div class="row${S.sel===b.id?' sel':''}" tabindex="0" data-id="${b.id}">
+      <div class="t">${esc(titulo(b))}</div>
+      <div class="m">${esc([b.operacion,m2txt(b.m2min,b.m2max),b.frente_min?`frente ≥ ${fmt(b.frente_min)} m`:'',b.puntos.length?`${b.puntos.length} ubicaci${b.puntos.length===1?'ón':'ones'}`:'sin ubicaciones'].filter(Boolean).join(' · '))}</div>
+      <div class="r"><span class="pill ${b.estado}">${b.estado}</span>${fdate(b.actualizado)}</div></div>`).join('')
+    :(S.busq.length?`<div class="empty">No hay búsquedas ${S.filtro==='Todas'?'':S.filtro.toLowerCase()+'s'} que coincidan.</div>`
+    :`<div class="empty"><b style="color:var(--ink)">Todavía no cargaste búsquedas</b>Creá la primera o importá una planilla con todas juntas.<div class="tools"><button class="btn pri" data-new>Nueva búsqueda</button><button class="btn" data-imp>Importar planilla</button></div></div>`);
+  $$('#rows .row').forEach(r=>{r.onclick=()=>editar(S.busq.find(b=>b.id===r.dataset.id));r.onkeydown=e=>{if(e.key==='Enter')r.click()}});
+  const n=$('#rows [data-new]');if(n)n.onclick=()=>editar(null);const im=$('#rows [data-imp]');if(im)im.onclick=importar;
+  drawMap();
+}
+$('#q').oninput=e=>{S.q=e.target.value;renderList()};
+$('#b-new').onclick=()=>editar(null);$('#b-imp').onclick=()=>importar();
+function drawMap(){if(!layer)return;layer.clearLayers();
+  visibles().forEach(b=>b.puntos.forEach(p=>{const col=p.estado==='Descartada'?'#a8402c':colorE[b.estado];const pop=`<b>${esc(p.nombre)}</b><br>${esc(titulo(b))}`;
+    if(p.forma==='Tramo'&&Array.isArray(p.tramo)&&p.tramo.length>1)L.polyline(p.tramo,{color:col,weight:6,opacity:.85}).bindPopup(pop).on('click',()=>{}).addTo(layer);
+    else if(p.lat!=null)L.marker([p.lat,p.lng],{icon:L.divIcon({className:'',html:`<div class="mk" style="background:${col}"></div>`,iconSize:[14,14],iconAnchor:[7,7]})}).bindPopup(pop+`<br><button class="btn sm" style="margin-top:6px" onclick="editar(S.busq.find(x=>x.id==='${b.id}'))">Editar búsqueda</button>`).addTo(layer)}))}
+function fitMap(){if(!map)return;const pts=[];visibles().forEach(b=>b.puntos.forEach(p=>{if(p.forma==='Tramo'&&p.tramo)p.tramo.forEach(q=>pts.push(q));else if(p.lat!=null)pts.push([p.lat,p.lng])}));
+  if(pts.length)map.fitBounds(pts,{padding:[30,30],maxZoom:15})}
+
+/* ---------------- editor de búsqueda ---------------- */
+let E=null,emap=null,elayer=null,emode=null,etmp=[];
+function editar(b){
+  E={orig:b,id:b?.id||null,f:b?{...b}:{operacion:'Alquiler',estado:'Activa'},pts:(b?.puntos||[]).map(p=>({...p})),del:[]};
+  S.sel=b?.id||null;
+  $('#layer').innerHTML=`<div class="scrim" data-close></div><aside class="drawer" role="dialog" aria-label="Búsqueda">
+   <div class="dhead"><h2>${b?esc(titulo(b)):'Nueva búsqueda'}</h2><button class="btn ghost" data-close aria-label="Cerrar">✕</button></div>
+   <div class="dbody">
+    <div class="sec"><div class="grid3">
+      <label class="full">Título <small>opcional · si lo dejás vacío se arma con la superficie y la zona</small><input id="e-titulo"></label>
+      <label>Operación<select id="e-operacion"><option>Alquiler</option><option>Compra</option></select></label>
+      <label>Estado<select id="e-estado">${ESTADOS.map(e=>`<option>${e}</option>`).join('')}</select></label>
+      <label>Frente mínimo (m)<input id="e-frente_min" type="number" min="0" step="0.1"></label>
+      <label>Superficie mínima (m²)<input id="e-m2min" type="number" min="0"></label>
+      <label>Superficie máxima (m²)<input id="e-m2max" type="number" min="0"></label>
+      <span></span>
+      <label>Alquiler mín. ($)<input id="e-alq_min_ars" type="number" min="0"></label>
+      <label>Alquiler máx. ($)<input id="e-alq_max_ars" type="number" min="0"></label>
+      <span></span>
+      <label>Alquiler mín. (USD)<input id="e-alq_min_usd" type="number" min="0"></label>
+      <label>Alquiler máx. (USD)<input id="e-alq_max_usd" type="number" min="0"></label>
+      <span></span>
+      <label class="full">Zona general <small>ej.: CABA, Zona norte GBA, Rosario</small><input id="e-zonas"></label>
+      <label class="full">Requisitos<textarea id="e-requisitos" placeholder="Esquina, salida de humos, potencia eléctrica, estacionamiento…"></textarea></label>
+    </div></div>
+    <div class="sec">
+      <h3>Ubicaciones buscadas</h3>
+      <div class="addr"><input id="e-addr" placeholder="Buscar una dirección o esquina (ej.: Av. Cabildo y Juramento)" aria-label="Buscar dirección"><button class="btn" id="e-buscar">Buscar</button><div class="sug" id="e-sug" hidden></div></div>
+      <div class="modebar"><span class="hint">O marcá en el mapa:</span><button class="btn sm" data-mode="punto">Punto</button><button class="btn sm" data-mode="tramo">Tramo de calle</button><span class="hint" id="e-modehint"></span></div>
+      <div id="emap"></div>
+      <div class="pts" id="e-pts"></div>
+    </div>
+   </div>
+   <div class="dfoot"><button class="btn pri" id="e-save">Guardar</button><button class="btn" data-close>Cancelar</button><span class="msg" id="e-msg"></span><span class="grow"></span>${b?'<span id="e-delwrap"><button class="btn danger" id="e-del">Eliminar búsqueda</button></span>':''}</div>
+  </aside>`;
+  for(const k of ['titulo','operacion','estado','m2min','m2max','frente_min','alq_min_ars','alq_max_ars','alq_min_usd','alq_max_usd','zonas','requisitos']){const el=$('#e-'+k);if(E.f[k]!=null)el.value=E.f[k]}
+  $$('#layer [data-close]').forEach(x=>x.onclick=cerrar);
+  document.addEventListener('keydown',escClose);
+  emap=L.map('emap').setView([-34.61,-58.44],12);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19,attribution:'© OpenStreetMap · © CARTO'}).addTo(emap);elayer=L.layerGroup().addTo(emap);
+  emap.on('click',mapClick);
+  $$('[data-mode]').forEach(x=>x.onclick=()=>setMode(emode===x.dataset.mode?null:x.dataset.mode));
+  $('#e-buscar').onclick=buscarDir;$('#e-addr').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();buscarDir()}};
+  $('#e-save').onclick=guardar;
+  const d=$('#e-del');if(d)d.onclick=()=>{$('#e-delwrap').innerHTML=`<span class="confirm">¿Eliminar esta búsqueda y sus ubicaciones? <button class="btn sm danger" id="e-del2">Sí, eliminar</button><button class="btn sm" id="e-del0">No</button></span>`;$('#e-del0').onclick=()=>editar(b);$('#e-del2').onclick=eliminar};
+  renderPts(true);
+  setTimeout(()=>{emap.invalidateSize();fitE()},60);
+  renderList();
+}
+function escClose(e){if(e.key==='Escape')cerrar()}
+function cerrar(){document.removeEventListener('keydown',escClose);if(emap){emap.remove();emap=null}$('#layer').innerHTML='';E=null;S.sel=null;emode=null;etmp=[];renderList()}
+function setMode(m){emode=m;etmp=[];$$('[data-mode]').forEach(x=>x.classList.toggle('on',x.dataset.mode===m));
+  $('#e-modehint').textContent=m==='punto'?'Tocá el lugar exacto.':m==='tramo'?'Tocá el comienzo y después el final del tramo.':'';drawE()}
+async function mapClick(ev){if(!emode)return;const {lat,lng}=ev.latlng;
+  if(emode==='punto'){const nom=await reverseDir(lat,lng);E.pts.push({nombre:nom.nombre||`Punto ${lat.toFixed(5)}, ${lng.toFixed(5)}`,barrio:nom.barrio,forma:'Punto',estado:'Pendiente',lat:+lat.toFixed(6),lng:+lng.toFixed(6)});setMode(null);renderPts()}
+  else if(emode==='tramo'){etmp.push([+lat.toFixed(6),+lng.toFixed(6)]);if(etmp.length===2){const nom=await reverseDir((etmp[0][0]+etmp[1][0])/2,(etmp[0][1]+etmp[1][1])/2);
+    E.pts.push({nombre:nom.calle?`${nom.calle} (tramo)`:'Tramo',barrio:nom.barrio,forma:'Tramo',estado:'Pendiente',lat:(etmp[0][0]+etmp[1][0])/2,lng:(etmp[0][1]+etmp[1][1])/2,tramo:etmp});setMode(null);renderPts()}else drawE()}}
+function drawE(){if(!elayer)return;elayer.clearLayers();
+  E.pts.forEach((p,i)=>{if(p.forma==='Tramo'&&p.tramo)L.polyline(p.tramo,{color:'#a8863a',weight:6}).addTo(elayer).bindTooltip(String(i+1));
+    else if(p.lat!=null)L.marker([p.lat,p.lng],{draggable:true,icon:L.divIcon({className:'',html:`<div class="mk" style="background:#a8863a;width:18px;height:18px;display:grid;place-items:center;color:#fff;font-size:10px;font-weight:700">${i+1}</div>`,iconSize:[18,18],iconAnchor:[9,9]})}).addTo(elayer).on('dragend',e=>{const ll=e.target.getLatLng();p.lat=+ll.lat.toFixed(6);p.lng=+ll.lng.toFixed(6);p._dirty=true})});
+  etmp.forEach(q=>L.circleMarker(q,{radius:6,color:'#141414'}).addTo(elayer))}
+function fitE(){const pts=[];E.pts.forEach(p=>{if(p.tramo)p.tramo.forEach(q=>pts.push(q));else if(p.lat!=null)pts.push([p.lat,p.lng])});if(pts.length)emap.fitBounds(pts,{padding:[30,30],maxZoom:16})}
+function renderPts(first){
+  $('#e-pts').innerHTML=E.pts.length?E.pts.map((p,i)=>`<div class="pt"><span class="n">${i+1}</span>
+     <input value="${esc(p.nombre)}" data-i="${i}" aria-label="Nombre de la ubicación ${i+1}">
+     <span class="acts">${p.estado&&p.estado!=='Pendiente'?`<span class="pill ${p.estado}" title="Estado según Madero Capital">${p.estado}</span>`:''}<span class="hint">${p.forma==='Tramo'?'tramo':p.lat==null?'sin ubicar':esc(p.barrio||'')}</span><button class="btn sm ghost" data-rm="${i}" aria-label="Quitar ubicación ${i+1}">Quitar</button></span></div>`).join('')
+    :'<div class="pt"><span></span><span class="hint">Todavía no agregaste ubicaciones. Buscá una dirección o marcala en el mapa.</span><span></span></div>';
+  $$('#e-pts input').forEach(x=>x.oninput=()=>{const p=E.pts[+x.dataset.i];p.nombre=x.value;p._dirty=true});
+  $$('#e-pts [data-rm]').forEach(x=>x.onclick=()=>{const p=E.pts.splice(+x.dataset.rm,1)[0];if(p.id)E.del.push(p.id);renderPts()});
+  drawE();if(!first)fitE();
+}
+
+/* geocodificación con OpenStreetMap (Nominatim) */
+let lastGeo=0;
+async function geo(url){const wait=1100-(Date.now()-lastGeo);if(wait>0)await new Promise(r=>setTimeout(r,wait));lastGeo=Date.now();
+  const r=await fetch(url,{headers:{'Accept-Language':'es'}});if(!r.ok)throw new Error('geo');return r.json()}
+function limpiarDir(q){return q.replace(/\s+y\s+/i,' & ')}
+async function buscarGeo(q){
+  const base='https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&countrycodes=ar&limit=6&q=';
+  let r=await geo(base+encodeURIComponent(q.includes('Argentina')?q:q+', Argentina'));
+  if(!r.length&&/\sy\s/i.test(q))r=await geo(base+encodeURIComponent(limpiarDir(q)+', Argentina'));
+  return r}
+async function reverseDir(lat,lng){try{const r=await geo(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&zoom=18&lat=${lat}&lon=${lng}`);const a=r.address||{};
+  return {nombre:[a.road,a.house_number].filter(Boolean).join(' ')||r.name||'',calle:a.road||'',barrio:a.suburb||a.neighbourhood||a.city_district||a.town||a.city||''}}catch(e){return {}}}
+async function buscarDir(){const q=$('#e-addr').value.trim();if(q.length<3)return;const box=$('#e-sug');box.hidden=false;box.innerHTML='<button disabled>Buscando…</button>';
+  try{const r=await buscarGeo(q);
+    box.innerHTML=r.length?r.map((x,i)=>`<button data-i="${i}">${esc(x.display_name)}</button>`).join(''):'<button disabled>No encontramos esa dirección. Probá con calle y altura, o marcala en el mapa.</button>';
+    $$('#e-sug [data-i]').forEach(bt=>bt.onclick=()=>{const x=r[+bt.dataset.i],a=x.address||{};
+      E.pts.push({nombre:q,barrio:a.suburb||a.neighbourhood||a.city_district||a.town||a.city||'',forma:'Punto',estado:'Pendiente',lat:+(+x.lat).toFixed(6),lng:+(+x.lon).toFixed(6)});
+      box.hidden=true;$('#e-addr').value='';renderPts()})}
+  catch(e){box.innerHTML='<button disabled>El buscador no respondió. Probá de nuevo o marcá el punto en el mapa.</button>'}}
+
+async function guardar(){const msg=$('#e-msg'),btn=$('#e-save');
+  const f={};for(const k of ['titulo','operacion','estado','zonas','requisitos'])f[k]=$('#e-'+k).value.trim()||null;
+  for(const k of ['m2min','m2max','frente_min','alq_min_ars','alq_max_ars','alq_min_usd','alq_max_usd'])f[k]=num($('#e-'+k).value);
+  f.operacion=f.operacion||'Alquiler';f.estado=f.estado||'Activa';
+  if(f.m2min&&f.m2max&&f.m2max<f.m2min){msg.className='msg err';msg.textContent='La superficie máxima tiene que ser mayor que la mínima.';return}
+  if(E.pts.some(p=>!p.nombre.trim())){msg.className='msg err';msg.textContent='Cada ubicación necesita un nombre.';return}
+  btn.disabled=true;msg.className='msg';msg.textContent='Guardando…';
+  try{
+    let id=E.id;
+    if(id){const {error}=await sb.from('busquedas').update(f).eq('id',id);if(error)throw error}
+    else{const {data,error}=await sb.from('busquedas').insert({...f,marca_id:S.marca.id}).select('id').single();if(error)throw error;id=data.id}
+    for(const pid of E.del){const {error}=await sb.from('puntos').update({borrado:true}).eq('id',pid);if(error)throw error}
+    const nuevos=E.pts.filter(p=>!p.id).map(p=>({busqueda_id:id,marca_id:S.marca.id,nombre:p.nombre.trim(),forma:p.forma,estado:p.estado||'Pendiente',barrio:p.barrio||null,lat:p.lat??null,lng:p.lng??null,tramo:p.tramo||null}));
+    if(nuevos.length){const {error}=await sb.from('puntos').insert(nuevos);if(error)throw error}
+    for(const p of E.pts.filter(p=>p.id&&p._dirty)){const {error}=await sb.from('puntos').update({nombre:p.nombre.trim(),lat:p.lat,lng:p.lng}).eq('id',p.id);if(error)throw error}
+    toast('Búsqueda guardada');cerrar();await loadBusq();
+  }catch(e){console.warn(e);btn.disabled=false;msg.className='msg err';msg.textContent='No se pudo guardar. Revisá tu conexión y probá de nuevo.'}}
+async function eliminar(){const id=E.id;const {error}=await sb.from('busquedas').update({borrado:true}).eq('id',id);
+  if(error){toast('No se pudo eliminar. Probá de nuevo.');return}
+  await sb.from('puntos').update({borrado:true}).eq('busqueda_id',id);toast('Búsqueda eliminada');cerrar();await loadBusq()}
+
+/* ---------------- importar planilla ---------------- */
+const COLS=['titulo','operacion','estado','m2min','m2max','frente_min','alq_max_ars','alq_max_usd','zonas','requisitos','ubicaciones'];
+const COLS_TXT={titulo:'Título',operacion:'Operación',estado:'Estado',m2min:'Sup. mín.',m2max:'Sup. máx.',frente_min:'Frente mín.',alq_max_ars:'Alquiler máx. $',alq_max_usd:'Alquiler máx. USD',zonas:'Zona',requisitos:'Requisitos',ubicaciones:'Ubicaciones'};
+function importar(){
+  $('#layer').innerHTML=`<div class="scrim" data-close></div><aside class="drawer" role="dialog" aria-label="Importar planilla">
+   <div class="dhead"><h2>Importar búsquedas desde una planilla</h2><button class="btn ghost" data-close aria-label="Cerrar">✕</button></div>
+   <div class="dbody imp">
+     <p style="margin:0">Usá una fila por búsqueda. En la columna <b>ubicaciones</b> poné las direcciones o esquinas separadas por <b>|</b> (ej.: <i>Av. Cabildo 2000 | Santa Fe y Coronel Díaz</i>). Las ubicamos en el mapa solas; las que no encontremos quedan para que las marques a mano.</p>
+     <div><button class="btn" id="i-tpl">Descargar plantilla</button></div>
+     <div class="drop" id="i-drop" tabindex="0">Arrastrá acá tu planilla (Excel o CSV) o hacé clic para elegirla<input type="file" id="i-file" accept=".xlsx,.xls,.csv" hidden></div>
+     <div id="i-prev"></div>
+   </div>
+   <div class="dfoot"><button class="btn pri" id="i-go" disabled>Importar</button><button class="btn" data-close>Cancelar</button><span class="msg" id="i-msg"></span></div></aside>`;
+  $$('#layer [data-close]').forEach(x=>x.onclick=cerrar);
+  $('#i-tpl').onclick=()=>{const csv='﻿'+COLS.join(';')+'\n'+['Local esquina zona norte','Alquiler','Activa','150','300','8','','6000','CABA','Esquina, salida de humos','Av. Cabildo y Juramento | Av. Santa Fe y Coronel Díaz'].join(';')+'\n';
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='plantilla-busquedas-madero.csv';a.click()};
+  const drop=$('#i-drop'),file=$('#i-file');drop.onclick=()=>file.click();drop.onkeydown=e=>{if(e.key==='Enter')file.click()};
+  drop.ondragover=e=>{e.preventDefault();drop.classList.add('over')};drop.ondragleave=()=>drop.classList.remove('over');
+  drop.ondrop=e=>{e.preventDefault();drop.classList.remove('over');if(e.dataTransfer.files[0])leer(e.dataTransfer.files[0])};
+  file.onchange=()=>{if(file.files[0])leer(file.files[0])};
+}
+async function cargarXLSX(){if(window.XLSX)return;await new Promise((ok,ko)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.onload=ok;s.onerror=ko;document.head.append(s)})}
+const norm=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'');
+const ALIAS={titulo:['titulo','nombre','busqueda'],operacion:['operacion'],estado:['estado'],m2min:['m2min','supmin','superficieminima','supminima','m2minimo','minimom2'],m2max:['m2max','supmax','superficiemaxima','supmaxima','m2maximo','maximom2'],frente_min:['frentemin','frente','frenteminimo'],alq_max_ars:['alqmaxars','alquilermax','alquilermaximo','presupuesto','alquilermaxars'],alq_max_usd:['alqmaxusd','alquilermaxusd','alquilerusd','presupuestousd'],zonas:['zonas','zona','area'],requisitos:['requisitos','notas','comentarios','observaciones'],ubicaciones:['ubicaciones','ubicacion','direcciones','direccion','esquinas','puntos']};
+let IMP=[];
+async function leer(f){const msg=$('#i-msg');msg.className='msg';msg.textContent='Leyendo…';
+  try{await cargarXLSX();const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+    IMP=rows.map(r=>{const o={};for(const [k,v] of Object.entries(r)){const n=norm(k);for(const [c,al] of Object.entries(ALIAS))if(al.includes(n))o[c]=String(v).trim()}return o}).filter(o=>o.titulo||o.zonas||o.ubicaciones||o.m2min);
+    if(!IMP.length){msg.className='msg err';msg.textContent='No encontramos filas con datos. Revisá que la primera fila tenga los nombres de las columnas de la plantilla.';return}
+    $('#i-prev').innerHTML=`<p style="margin:0 0 8px"><b>${IMP.length}</b> búsquedas y <b>${IMP.reduce((a,o)=>a+(o.ubicaciones?o.ubicaciones.split('|').filter(s=>s.trim()).length:0),0)}</b> ubicaciones para importar:</p>
+      <div class="tablewrap"><table><thead><tr>${COLS.map(c=>`<th>${COLS_TXT[c]}</th>`).join('')}</tr></thead><tbody>${IMP.slice(0,50).map(o=>`<tr>${COLS.map(c=>`<td>${esc(o[c]||'')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>${IMP.length>50?`<p class="hint">Y ${IMP.length-50} filas más.</p>`:''}`;
+    $('#i-go').disabled=false;msg.textContent='';$('#i-go').onclick=importarGo;
+  }catch(e){console.warn(e);msg.className='msg err';msg.textContent='No pudimos leer el archivo. Probá guardarlo como Excel (.xlsx) o CSV.'}}
+async function importarGo(){const msg=$('#i-msg'),go=$('#i-go');go.disabled=true;
+  const total=IMP.reduce((a,o)=>a+1+(o.ubicaciones?o.ubicaciones.split('|').filter(s=>s.trim()).length:0),0);let hecho=0,sinUbicar=0;
+  $('#i-prev').insertAdjacentHTML('afterbegin','<div class="bar" style="margin-bottom:12px"><i id="i-bar"></i></div>');
+  const tick=()=>{hecho++;$('#i-bar').style.width=(100*hecho/total)+'%';msg.textContent=`Importando… ${hecho} de ${total}`};
+  try{for(const o of IMP){
+      const op=/compra/i.test(o.operacion)?'Compra':'Alquiler',es=ESTADOS.find(e=>norm(e)===norm(o.estado))||'Activa';
+      const {data,error}=await sb.from('busquedas').insert({marca_id:S.marca.id,titulo:o.titulo||null,operacion:op,estado:es,m2min:num(o.m2min),m2max:num(o.m2max),frente_min:num(o.frente_min),alq_max_ars:num(o.alq_max_ars),alq_max_usd:num(o.alq_max_usd),zonas:o.zonas||null,requisitos:o.requisitos||null}).select('id').single();
+      if(error)throw error;tick();
+      const pts=[];for(const u of (o.ubicaciones||'').split('|').map(s=>s.trim()).filter(Boolean)){
+        let g=null;try{g=(await buscarGeo(u+(o.zonas&&!/argentina/i.test(u)?', '+o.zonas:'')))[0]||(await buscarGeo(u))[0]}catch(e){}
+        const a=g?.address||{};if(!g)sinUbicar++;
+        pts.push({busqueda_id:data.id,marca_id:S.marca.id,nombre:u,forma:g?'Punto':'Zona',estado:'Pendiente',lat:g?+(+g.lat).toFixed(6):null,lng:g?+(+g.lon).toFixed(6):null,barrio:a.suburb||a.neighbourhood||a.city_district||a.town||a.city||null});tick()}
+      if(pts.length){const {error:e2}=await sb.from('puntos').insert(pts);if(e2)throw e2}}
+    toast(`Importaste ${IMP.length} búsquedas`+(sinUbicar?` · ${sinUbicar} ubicaciones para marcar a mano`:''));cerrar();S.filtro='Todas';await loadBusq();
+  }catch(e){console.warn(e);msg.className='msg err';msg.textContent=`Se cortó la importación en la fila ${hecho}. Lo cargado hasta ahí quedó guardado; revisá la lista antes de reintentar.`;go.disabled=false;loadBusq()}}
+
+/* ---------------- panel del equipo ---------------- */
+function teTab(t){$('#te-marcas').setAttribute('aria-selected',t==='m');$('#te-locales').setAttribute('aria-selected',t==='l');$('#pe-marcas').hidden=t!=='m';$('#pe-locales').hidden=t!=='l'}
+$('#te-marcas').onclick=()=>teTab('m');$('#te-locales').onclick=()=>teTab('l');
+async function openEquipo(){show('v-equipo');$('#asbanner').hidden=true;await Promise.all([eqMarcas(),eqLocales()])}
+async function eqMarcas(){
+  const [{data:ms},{data:mm},{data:bs}]=await Promise.all([sb.from('marcas').select('*').order('nombre'),sb.from('miembros').select('*'),sb.from('busquedas').select('marca_id,estado').eq('borrado',false)]);
+  const by=id=>(mm||[]).filter(x=>x.marca_id===id);const nb=id=>(bs||[]).filter(x=>x.marca_id===id&&x.estado==='Activa').length;
+  const pend=(ms||[]).filter(m=>!m.aprobada&&!m.rechazada),apr=(ms||[]).filter(m=>m.aprobada);
+  $('#n-pend').innerHTML=pend.length?`<span class="badge">${pend.length}</span>`:'';
+  const opts=apr.map(m=>`<option value="${m.id}">${esc(m.nombre)}</option>`).join('');
+  $('#pe-marcas').innerHTML=`${pend.length?`<h3>Pendientes de aprobación</h3><div class="tcards">${pend.map(m=>{const p=by(m.id)[0]||{};return `<div class="tcard"><div><b>${esc(m.nombre)}</b>${m.rubro?` <span class="muted">· ${esc(m.rubro)}</span>`:''}<div class="m">${esc([p.nombre,p.cargo,p.email,p.telefono].filter(Boolean).join(' · '))} · se registró el ${fdate(m.creado)}</div></div>
+      <div class="acts"><button class="btn sm pri" data-ap="${m.id}">Aprobar como marca nueva</button><select data-sel="${m.id}" aria-label="Unir a una marca existente"><option value="">Unir a una marca existente…</option>${opts}</select><button class="btn sm" data-un="${m.id}">Unir</button><button class="btn sm danger" data-re="${m.id}">Rechazar</button></div></div>`}).join('')}</div>`:''}
+    <h3>Marcas habilitadas</h3><div class="tcards">${apr.map(m=>`<div class="tcard"><div><b>${esc(m.nombre)}</b><div class="m">${nb(m.id)} búsquedas activas · ${by(m.id).length?by(m.id).map(p=>esc(p.email)).join(', '):'sin usuarios en el portal'}</div></div><div class="acts"><button class="btn sm" data-ver="${m.id}">Ver búsquedas</button></div></div>`).join('')||'<div class="tcard"><span class="muted">Todavía no hay marcas habilitadas.</span></div>'}</div>`;
+  $$('[data-ap]').forEach(b=>b.onclick=async()=>{const {error}=await sb.rpc('aprobar_marca',{p_marca:b.dataset.ap});if(error)return toast('No se pudo aprobar.');toast('Marca aprobada');eqMarcas()});
+  $$('[data-un]').forEach(b=>b.onclick=async()=>{const to=$(`[data-sel="${b.dataset.un}"]`).value;if(!to)return toast('Elegí la marca a la que pertenece.');const {error}=await sb.rpc('aprobar_marca',{p_marca:b.dataset.un,p_unir_a:to});if(error)return toast('No se pudo unir.');toast('Usuario unido a la marca');eqMarcas()});
+  $$('[data-re]').forEach(b=>b.onclick=async()=>{const {error}=await sb.from('marcas').update({rechazada:true}).eq('id',b.dataset.re);if(error)return toast('No se pudo rechazar.');toast('Registro rechazado');eqMarcas()});
+  $$('[data-ver]').forEach(b=>b.onclick=()=>{const m=ms.find(x=>x.id===b.dataset.ver);S.viewAs=m;S.filtro='Activa';openMarca(m)});
+}
+async function eqLocales(){
+  const {data:ls}=await sb.from('locales').select('*').order('creado',{ascending:false});const n=(ls||[]).filter(l=>l.estado==='Nuevo').length;
+  $('#n-loc').innerHTML=n?`<span class="badge">${n}</span>`:'';
+  $('#pe-locales').innerHTML=(ls||[]).length?`<div class="tcards">${ls.map(l=>`<div class="tcard"><div><b>${esc(l.direccion)}${l.barrio?', '+esc(l.barrio):''}</b> <span class="muted">· ${fmt(l.superficie)} m²${l.frente?` · frente ${fmt(l.frente)} m`:''} · ${esc(l.operacion||'')}</span>
+      <div class="m">${esc(l.nombre)} · ${esc(l.email||'')} · ${esc(l.telefono||'')} · ${fdate(l.creado)}</div>${l.comentarios?`<div class="m">${esc(l.comentarios)}</div>`:''}</div>
+      <div class="acts"><select data-le="${l.id}" aria-label="Estado del local">${['Nuevo','Contactado','En cartera','Descartado'].map(e=>`<option ${l.estado===e?'selected':''}>${e}</option>`).join('')}</select></div></div>`).join('')}</div>`
+    :'<p class="muted">Todavía no llegaron locales desde la web.</p>';
+  $$('[data-le]').forEach(s=>s.onchange=async()=>{const {error}=await sb.from('locales').update({estado:s.value}).eq('id',s.dataset.le);toast(error?'No se pudo actualizar.':'Estado actualizado');eqLocales()});
+}
+
+if(!pendingRecovery)route();
+</script>
+</body>
+</html>
