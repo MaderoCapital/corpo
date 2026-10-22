@@ -84,6 +84,28 @@ button.send:disabled{opacity:.5;cursor:default}
 .done{display:grid;gap:10px;padding:8px 0}
 .done h3{font-family:var(--f-display);font-weight:500;font-size:22px;margin:0}
 .done p{margin:0;color:var(--muted)}
+.estado{margin-top:34px;padding-top:22px;border-top:1px solid var(--line);display:grid;gap:10px}
+.estado h3{font-family:var(--f-display);font-weight:500;font-size:20px;margin:0}
+.estado .sub2{margin:0;color:var(--muted);font-size:15px}
+.estform{display:flex;gap:10px;flex-wrap:wrap}
+.estform input{flex:1 1 200px;width:auto}
+.ghostbtn{font:600 15px var(--f-body);background:none;border:1px solid var(--ink);color:var(--ink);border-radius:4px;padding:10px 18px;cursor:pointer}
+.ghostbtn:disabled{opacity:.5;cursor:default}
+.estado .msg{min-height:0}
+.est-item{border:1px solid var(--line);border-radius:6px;padding:14px 16px;display:grid;gap:10px}
+.est-item .row1{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap}
+.est-item b{font-size:16px}
+.est-item .m{color:var(--muted);font-size:13.5px}
+.est-pill{display:inline-flex;align-items:center;gap:7px;font-weight:600;font-size:13.5px;padding:3px 11px;border-radius:999px;background:#f4ecda;color:#6f5417;white-space:nowrap}
+.est-pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.est-pill.fin{background:#e2f0e6;color:#2f7a4c}.est-pill.no{background:#f3f2ee;color:var(--muted)}
+.steps{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;list-style:none;margin:0;padding:0}
+.steps li{display:grid;gap:5px;font-size:11px;color:var(--muted);line-height:1.2}
+.steps li::before{content:"";height:5px;border-radius:3px;background:var(--line)}
+.steps li.done::before{background:var(--gold)}.steps li.now{color:var(--ink);font-weight:600}.steps li.now::before{background:var(--ink)}
+@media (max-width:620px){.steps{grid-template-columns:1fr}.steps li{grid-template-columns:5px 1fr;align-items:center;gap:10px}.steps li::before{height:14px;width:5px}}
+.est-top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;font-size:14px;color:var(--muted)}
+.est-top button{background:none;border:0;padding:0;text-decoration:underline;color:var(--muted);cursor:pointer;font:inherit}
 .done p.aviso{color:var(--ink);background:#f4ecda;border-left:3px solid var(--gold);padding:12px 14px;border-radius:2px}
 .done button{justify-self:start;font:500 14px var(--f-body);background:none;border:1px solid var(--line);color:var(--ink);border-radius:4px;padding:9px 14px;cursor:pointer}
 button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
@@ -175,6 +197,20 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
         <button class="send" type="submit">Enviar</button>
         <p class="msg" aria-live="polite"></p>
       </form>
+      <div class="estado" id="estado">
+        <h3>¿Ya postulaste un inmueble?</h3>
+        <p class="sub2">Ingresá con tu correo electrónico y mirá en qué estado se encuentra.</p>
+        <form id="est-mail" class="estform" novalidate>
+          <input id="est-email" type="email" placeholder="tu@correo.com" autocomplete="email" aria-label="Tu correo electrónico">
+          <button class="ghostbtn" type="submit">Ingresar</button>
+        </form>
+        <form id="est-code" class="estform" novalidate hidden>
+          <input id="est-token" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="Código de 6 dígitos" aria-label="Código que te llegó por mail">
+          <button class="ghostbtn" type="submit">Ver estado</button>
+        </form>
+        <p class="msg" id="est-msg" aria-live="polite"></p>
+        <div id="est-lista" hidden></div>
+      </div>
     </section>
 
     <section id="marcas">
@@ -411,8 +447,54 @@ form.addEventListener('submit',async ev=>{
   let aviso=null;if(repetido){aviso=document.createElement('p');aviso.className='aviso';aviso.textContent='Ya tenemos registrado un inmueble en esta misma ubicación. Nos vamos a poner en contacto con vos para chequear si se trata del mismo local o de uno distinto.'}
   const again=document.createElement('button');again.type='button';again.textContent='Enviar otro local';
   again.onclick=()=>{form.reset();syncTipo();box.remove();form.hidden=false;btn.disabled=false;msg.textContent=''};
-  box.append(h,p);if(aviso)box.append(aviso);box.append(again);form.hidden=true;form.after(box);sendHeight();
+  const seg=document.createElement('p');seg.textContent='Podés seguir el estado del local más abajo, ingresando con tu correo.';
+  box.append(h,p);if(aviso)box.append(aviso);box.append(seg,again);form.hidden=true;form.after(box);sendHeight();
 });
+
+
+/* estado de los locales postulados: acceso con código por mail (sin contraseña) */
+(function(){
+  const box=document.getElementById('estado');if(!box||!API)return;
+  const fm=document.getElementById('est-mail'),fc=document.getElementById('est-code'),msg=document.getElementById('est-msg'),lst=document.getElementById('est-lista');
+  const PASOS=['Recibido','En análisis','En cartera','Presentado a una marca','En negociación','Reservado','Operación concretada'];
+  const TXT={'Recibido':'Recibimos el local.','En análisis':'Lo estamos analizando y nos estamos contactando.','En cartera':'Está en nuestra cartera y lo estamos ofreciendo a las marcas.','Presentado a una marca':'Se lo presentamos a una marca interesada.','En negociación':'Hay una negociación en curso.','Reservado':'El local está reservado.','Operación concretada':'¡La operación se concretó!','No avanzó':'Por ahora este local no avanzó.'};
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const fd=t=>t?new Date(t).toLocaleDateString('es-AR',{day:'numeric',month:'long',year:'numeric'}):'';
+  const say=(t,k='')=>{msg.className='msg'+(k?' '+k:'');msg.textContent=t};
+  const KEY='mc.estado';let ses=null,mail='';
+  const load=()=>{try{const v=JSON.parse(localStorage.getItem(KEY)||'null');if(v&&v.exp>Date.now())return v}catch(e){}return null};
+  const store=v=>{try{v?localStorage.setItem(KEY,JSON.stringify(v)):localStorage.removeItem(KEY)}catch(e){}};
+  function setSes(tok,exp,email){ses={t:tok,exp:Date.now()+(exp||3600)*1000-60000,email};store(ses)}
+  // volvió desde el botón del mail
+  if(/access_token=/.test(location.hash)){const h=new URLSearchParams(location.hash.slice(1));let em='';try{em=JSON.parse(atob(h.get('access_token').split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).email||''}catch(e){}
+    setSes(h.get('access_token'),+h.get('expires_in'),em);history.replaceState(null,'',location.pathname+'#estado')}
+  else ses=load();
+  fm.addEventListener('submit',async e=>{e.preventDefault();const el=document.getElementById('est-email');mail=el.value.trim();
+    if(!mail||!el.checkValidity()){el.focus();return say('Escribí tu correo electrónico.','err')}
+    const b=fm.querySelector('button');b.disabled=true;say('Enviando…');
+    try{const back=new URL('index.html#estado',location.href).href;
+      const r=await fetch(API+'/auth/v1/otp?redirect_to='+encodeURIComponent(back),{method:'POST',headers:H,body:JSON.stringify({email:mail,create_user:true,data:{tipo:'postulante'}})});
+      if(r.status===429)throw new Error('rate');if(!r.ok)throw new Error(r.status);
+      fm.hidden=true;fc.hidden=false;say(`Te mandamos un código a ${mail}. Escribilo acá (o tocá el botón del mail). Revisá también la carpeta de spam.`);document.getElementById('est-token').focus();sendHeight()}
+    catch(err){say(err.message==='rate'?'Pediste varios códigos seguidos. Esperá un minuto y probá de nuevo.':'No pudimos enviar el mail. Probá de nuevo en un rato.','err')}
+    b.disabled=false});
+  fc.addEventListener('submit',async e=>{e.preventDefault();const tk=document.getElementById('est-token').value.replace(/\D/g,'');if(tk.length<6)return say('El código tiene 6 números.','err');
+    const b=fc.querySelector('button');b.disabled=true;say('Verificando…');
+    try{const r=await fetch(API+'/auth/v1/verify',{method:'POST',headers:H,body:JSON.stringify({type:'email',email:mail,token:tk})});const d=await r.json().catch(()=>({}));
+      if(!r.ok||!d.access_token)throw new Error('code');setSes(d.access_token,d.expires_in,mail);say('');await mostrar()}
+    catch(err){say('El código no es válido o ya venció. Pedí uno nuevo.','err')}
+    b.disabled=false});
+  async function mostrar(){if(!ses)return;fm.hidden=true;fc.hidden=true;lst.hidden=false;lst.innerHTML='<p class="m">Cargando…</p>';
+    let rows;try{const r=await fetch(API+'/rest/v1/rpc/mis_locales',{method:'POST',headers:{...H,'Authorization':'Bearer '+ses.t},body:'{}'});if(r.status===401){salir();return say('Tu sesión venció. Ingresá de nuevo.','err')}if(!r.ok)throw 0;rows=await r.json()}
+    catch(e){lst.innerHTML='<p class="msg err">No pudimos cargar el estado. Probá de nuevo en un rato.</p>';return}
+    const top=`<div class="est-top"><span>${esc(ses.email||'')}</span><button type="button" id="est-salir">Salir</button></div>`;
+    lst.innerHTML=top+(rows.length?rows.map(x=>{const i=PASOS.indexOf(x.estado),no=x.estado==='No avanzó',fin=x.estado==='Operación concretada';
+      return `<div class="est-item"><div class="row1"><div><b>${esc(x.direccion||'Local postulado')}${x.barrio?', '+esc(x.barrio):''}</b><div class="m">${x.tipo==='Referido'?'Referido':'Postulado'} el ${fd(x.creado)}</div></div><span class="est-pill ${fin?'fin':no?'no':''}">${esc(x.estado)}</span></div>${no?'':`<ol class="steps">${PASOS.map((p,k)=>`<li class="${k<i?'done':k===i?'now':''}">${esc(p)}</li>`).join('')}</ol>`}<div class="m">${esc(TXT[x.estado]||'')} Actualizado el ${fd(x.actualizado)}.</div></div>`}).join('')
+      :`<p class="m">No encontramos locales postulados con este correo. Si usaste otro, ingresá con ese.</p>`);
+    document.getElementById('est-salir').onclick=salir;sendHeight()}
+  function salir(){ses=null;store(null);lst.hidden=true;lst.innerHTML='';fc.hidden=true;fm.hidden=false;say('');sendHeight()}
+  if(ses)mostrar().then(()=>{if(location.hash==='#estado')box.scrollIntoView()});
+})();
 
 /* mapa: búsquedas activas en vivo desde la base */
 if(API)fetch(API+'/rest/v1/rpc/puntos_publicos_v2',{method:'POST',headers:H,body:'{}'}).then(r=>r.ok?r.json():null).then(d=>{if(Array.isArray(d)&&d.length){PUNTOS=d.map(p=>{const o={a:p.a,o:p.o,b:p.b,mn:p.mn,mx:p.mx};if(Array.isArray(p.t)&&p.t.length>1)o.t=p.t;if(Array.isArray(p.pg)&&p.pg.length>2)o.pg=p.pg;return o});document.getElementById('count').textContent=`${PUNTOS.length} ubicaciones buscadas en este momento. Tocá un punto para ver la superficie.`;draw()}}).catch(()=>{});
