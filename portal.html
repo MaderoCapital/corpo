@@ -95,6 +95,7 @@ label small{font-weight:400;color:var(--muted)}
 .mapcol{position:relative;min-width:0}
 #map{position:absolute;inset:0}
 .leaflet-container{font:inherit}
+.leaflet-tile-pane{filter:grayscale(.75) contrast(.95) brightness(1.03)}
 .mk{width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25)}
 @media (max-width:900px){.board{grid-template-columns:1fr;height:auto}.listcol{border-right:0}.mapcol{height:55vh;order:-1}.rows{overflow:visible}}
 
@@ -349,7 +350,7 @@ async function openMarca(m){S.marca=m;show('v-marca');
   $('#asbanner').hidden=!S.equipo;
   if(S.equipo){$('#asbanner').innerHTML=`Estás viendo las búsquedas de <b>${esc(m.nombre)}</b> como equipo de Madero Capital. <button class="btn sm" id="as-back">Volver al panel</button>`;$('#as-back').onclick=()=>{S.viewAs=null;$('#asbanner').hidden=true;openEquipo()}}
   if(!map){map=L.map('map',{zoomControl:true}).setView([-34.61,-58.44],12);
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19,attribution:'© OpenStreetMap · © CARTO'}).addTo(map);layer=L.layerGroup().addTo(map)}
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© colaboradores de OpenStreetMap'}).addTo(map);layer=L.layerGroup().addTo(map)}
   setTimeout(()=>map.invalidateSize(),50);
   await loadBusq();
 }
@@ -382,9 +383,10 @@ $('#q').oninput=e=>{S.q=e.target.value;renderList()};
 $('#b-new').onclick=()=>editar(null);$('#b-imp').onclick=()=>importar();
 function drawMap(){if(!layer)return;layer.clearLayers();
   visibles().forEach(b=>b.puntos.forEach(p=>{const col=p.estado==='Descartada'?'#a8402c':colorE[b.estado];const pop=`<b>${esc(p.nombre)}</b><br>${esc(titulo(b))}`;
-    if(p.forma==='Tramo'&&Array.isArray(p.tramo)&&p.tramo.length>1)L.polyline(p.tramo,{color:col,weight:6,opacity:.85}).bindPopup(pop).on('click',()=>{}).addTo(layer);
+    if(p.forma==='Cuadrante'&&Array.isArray(p.poligono)&&p.poligono.length>2)L.polygon(p.poligono,{color:col,weight:2,fillOpacity:.2}).bindPopup(pop).addTo(layer);
+    else if(p.forma==='Tramo'&&Array.isArray(p.tramo)&&p.tramo.length>1)L.polyline(p.tramo,{color:col,weight:6,opacity:.85}).bindPopup(pop).on('click',()=>{}).addTo(layer);
     else if(p.lat!=null)L.marker([p.lat,p.lng],{icon:L.divIcon({className:'',html:`<div class="mk" style="background:${col}"></div>`,iconSize:[14,14],iconAnchor:[7,7]})}).bindPopup(pop+`<br><button class="btn sm" style="margin-top:6px" onclick="editar(S.busq.find(x=>x.id==='${b.id}'))">Editar búsqueda</button>`).addTo(layer)}))}
-function fitMap(){if(!map)return;const pts=[];visibles().forEach(b=>b.puntos.forEach(p=>{if(p.forma==='Tramo'&&p.tramo)p.tramo.forEach(q=>pts.push(q));else if(p.lat!=null)pts.push([p.lat,p.lng])}));
+function fitMap(){if(!map)return;const pts=[];visibles().forEach(b=>b.puntos.forEach(p=>{if(p.forma==='Cuadrante'&&p.poligono)p.poligono.forEach(q=>pts.push(q));else if(p.forma==='Tramo'&&p.tramo)p.tramo.forEach(q=>pts.push(q));else if(p.lat!=null)pts.push([p.lat,p.lng])}));
   if(pts.length)map.fitBounds(pts,{padding:[30,30],maxZoom:15})}
 
 /* ---------------- editor de búsqueda ---------------- */
@@ -415,7 +417,7 @@ function editar(b){
     <div class="sec">
       <h3>Ubicaciones buscadas</h3>
       <div class="addr"><input id="e-addr" placeholder="Buscar una dirección o esquina (ej.: Av. Cabildo y Juramento)" aria-label="Buscar dirección"><button class="btn" id="e-buscar">Buscar</button><div class="sug" id="e-sug" hidden></div></div>
-      <div class="modebar"><span class="hint">O marcá en el mapa:</span><button class="btn sm" data-mode="punto">Punto</button><button class="btn sm" data-mode="tramo">Tramo de calle</button><span class="hint" id="e-modehint"></span></div>
+      <div class="modebar"><span class="hint">O marcá en el mapa:</span><button class="btn sm" data-mode="punto">Punto</button><button class="btn sm" data-mode="tramo">Tramo de calle</button><button class="btn sm" data-mode="cuadrante">Cuadrante</button><button class="btn sm pri" id="e-cerrar" hidden>Cerrar cuadrante</button><span class="hint" id="e-modehint"></span></div>
       <div id="emap"></div>
       <div class="pts" id="e-pts"></div>
     </div>
@@ -426,11 +428,11 @@ function editar(b){
   $$('#layer [data-close]').forEach(x=>x.onclick=cerrar);
   document.addEventListener('keydown',escClose);
   emap=L.map('emap').setView([-34.61,-58.44],12);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',{maxZoom:19,attribution:'© OpenStreetMap · © CARTO'}).addTo(emap);elayer=L.layerGroup().addTo(emap);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© colaboradores de OpenStreetMap'}).addTo(emap);elayer=L.layerGroup().addTo(emap);
   emap.on('click',mapClick);
   $$('[data-mode]').forEach(x=>x.onclick=()=>setMode(emode===x.dataset.mode?null:x.dataset.mode));
   $('#e-buscar').onclick=buscarDir;$('#e-addr').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();buscarDir()}};
-  $('#e-save').onclick=guardar;
+  $('#e-save').onclick=guardar;$('#e-cerrar').onclick=cerrarCuadrante;
   const d=$('#e-del');if(d)d.onclick=()=>{$('#e-delwrap').innerHTML=`<span class="confirm">¿Eliminar esta búsqueda y sus ubicaciones? <button class="btn sm danger" id="e-del2">Sí, eliminar</button><button class="btn sm" id="e-del0">No</button></span>`;$('#e-del0').onclick=()=>editar(b);$('#e-del2').onclick=eliminar};
   renderPts(true);
   setTimeout(()=>{emap.invalidateSize();fitE()},60);
@@ -439,20 +441,26 @@ function editar(b){
 function escClose(e){if(e.key==='Escape')cerrar()}
 function cerrar(){document.removeEventListener('keydown',escClose);if(emap){emap.remove();emap=null}$('#layer').innerHTML='';E=null;S.sel=null;emode=null;etmp=[];renderList()}
 function setMode(m){emode=m;etmp=[];$$('[data-mode]').forEach(x=>x.classList.toggle('on',x.dataset.mode===m));
-  $('#e-modehint').textContent=m==='punto'?'Tocá el lugar exacto.':m==='tramo'?'Tocá el comienzo y después el final del tramo.':'';drawE()}
+  $('#e-modehint').textContent=m==='punto'?'Tocá el lugar exacto.':m==='tramo'?'Tocá el comienzo y después el final del tramo.':m==='cuadrante'?'Tocá las esquinas del cuadrante, una por una. Para terminar tocá la primera esquina o «Cerrar cuadrante».':'';$('#e-cerrar').hidden=true;drawE()}
+async function cerrarCuadrante(){if(etmp.length<3)return;const pol=etmp.slice();const c=[pol.reduce((a,q)=>a+q[0],0)/pol.length,pol.reduce((a,q)=>a+q[1],0)/pol.length];const nom=await reverseDir(c[0],c[1]);
+  E.pts.push({nombre:nom.barrio?`Cuadrante en ${nom.barrio}`:'Cuadrante',barrio:nom.barrio,forma:'Cuadrante',estado:'Pendiente',lat:+c[0].toFixed(6),lng:+c[1].toFixed(6),poligono:pol});setMode(null);renderPts()}
 async function mapClick(ev){if(!emode)return;const {lat,lng}=ev.latlng;
   if(emode==='punto'){const nom=await reverseDir(lat,lng);E.pts.push({nombre:nom.nombre||`Punto ${lat.toFixed(5)}, ${lng.toFixed(5)}`,barrio:nom.barrio,forma:'Punto',estado:'Pendiente',lat:+lat.toFixed(6),lng:+lng.toFixed(6)});setMode(null);renderPts()}
   else if(emode==='tramo'){etmp.push([+lat.toFixed(6),+lng.toFixed(6)]);if(etmp.length===2){const nom=await reverseDir((etmp[0][0]+etmp[1][0])/2,(etmp[0][1]+etmp[1][1])/2);
-    E.pts.push({nombre:nom.calle?`${nom.calle} (tramo)`:'Tramo',barrio:nom.barrio,forma:'Tramo',estado:'Pendiente',lat:(etmp[0][0]+etmp[1][0])/2,lng:(etmp[0][1]+etmp[1][1])/2,tramo:etmp});setMode(null);renderPts()}else drawE()}}
+    E.pts.push({nombre:nom.calle?`${nom.calle} (tramo)`:'Tramo',barrio:nom.barrio,forma:'Tramo',estado:'Pendiente',lat:(etmp[0][0]+etmp[1][0])/2,lng:(etmp[0][1]+etmp[1][1])/2,tramo:etmp});setMode(null);renderPts()}else drawE()}
+  else if(emode==='cuadrante'){if(etmp.length>=3){const a=emap.latLngToContainerPoint(etmp[0]),b=emap.latLngToContainerPoint([lat,lng]);if(a.distanceTo(b)<14){cerrarCuadrante();return}}
+    etmp.push([+lat.toFixed(6),+lng.toFixed(6)]);$('#e-cerrar').hidden=etmp.length<3;drawE()}}
 function drawE(){if(!elayer)return;elayer.clearLayers();
-  E.pts.forEach((p,i)=>{if(p.forma==='Tramo'&&p.tramo)L.polyline(p.tramo,{color:'#a8863a',weight:6}).addTo(elayer).bindTooltip(String(i+1));
+  E.pts.forEach((p,i)=>{if(p.forma==='Cuadrante'&&Array.isArray(p.poligono)&&p.poligono.length>2)L.polygon(p.poligono,{color:'#a8863a',weight:2,fillOpacity:.18}).addTo(elayer).bindTooltip(String(i+1));
+    else if(p.forma==='Tramo'&&p.tramo)L.polyline(p.tramo,{color:'#a8863a',weight:6}).addTo(elayer).bindTooltip(String(i+1));
     else if(p.lat!=null)L.marker([p.lat,p.lng],{draggable:true,icon:L.divIcon({className:'',html:`<div class="mk" style="background:#a8863a;width:18px;height:18px;display:grid;place-items:center;color:#fff;font-size:10px;font-weight:700">${i+1}</div>`,iconSize:[18,18],iconAnchor:[9,9]})}).addTo(elayer).on('dragend',e=>{const ll=e.target.getLatLng();p.lat=+ll.lat.toFixed(6);p.lng=+ll.lng.toFixed(6);p._dirty=true})});
-  etmp.forEach(q=>L.circleMarker(q,{radius:6,color:'#141414'}).addTo(elayer))}
-function fitE(){const pts=[];E.pts.forEach(p=>{if(p.tramo)p.tramo.forEach(q=>pts.push(q));else if(p.lat!=null)pts.push([p.lat,p.lng])});if(pts.length)emap.fitBounds(pts,{padding:[30,30],maxZoom:16})}
+  if(emode==='cuadrante'&&etmp.length>1)L.polyline(etmp,{color:'#141414',weight:2,dashArray:'5 5'}).addTo(elayer);
+  etmp.forEach((q,i)=>L.circleMarker(q,{radius:i===0&&emode==='cuadrante'?8:6,color:'#141414'}).addTo(elayer))}
+function fitE(){const pts=[];E.pts.forEach(p=>{if(p.poligono)p.poligono.forEach(q=>pts.push(q));else if(p.tramo)p.tramo.forEach(q=>pts.push(q));else if(p.lat!=null)pts.push([p.lat,p.lng])});if(pts.length)emap.fitBounds(pts,{padding:[30,30],maxZoom:16})}
 function renderPts(first){
   $('#e-pts').innerHTML=E.pts.length?E.pts.map((p,i)=>`<div class="pt"><span class="n">${i+1}</span>
      <input value="${esc(p.nombre)}" data-i="${i}" aria-label="Nombre de la ubicación ${i+1}">
-     <span class="acts">${p.estado&&p.estado!=='Pendiente'?`<span class="pill ${p.estado}" title="Estado según Madero Capital">${p.estado}</span>`:''}<span class="hint">${p.forma==='Tramo'?'tramo':p.lat==null?'sin ubicar':esc(p.barrio||'')}</span><button class="btn sm ghost" data-rm="${i}" aria-label="Quitar ubicación ${i+1}">Quitar</button></span></div>`).join('')
+     <span class="acts">${p.estado&&p.estado!=='Pendiente'?`<span class="pill ${p.estado}" title="Estado según Madero Capital">${p.estado}</span>`:''}<span class="hint">${p.forma==='Tramo'?'tramo':p.forma==='Cuadrante'?'cuadrante':p.lat==null?'sin ubicar':esc(p.barrio||'')}</span><button class="btn sm ghost" data-rm="${i}" aria-label="Quitar ubicación ${i+1}">Quitar</button></span></div>`).join('')
     :'<div class="pt"><span></span><span class="hint">Todavía no agregaste ubicaciones. Buscá una dirección o marcala en el mapa.</span><span></span></div>';
   $$('#e-pts input').forEach(x=>x.oninput=()=>{const p=E.pts[+x.dataset.i];p.nombre=x.value;p._dirty=true});
   $$('#e-pts [data-rm]').forEach(x=>x.onclick=()=>{const p=E.pts.splice(+x.dataset.rm,1)[0];if(p.id)E.del.push(p.id);renderPts()});
@@ -491,7 +499,7 @@ async function guardar(){const msg=$('#e-msg'),btn=$('#e-save');
     if(id){const {error}=await sb.from('busquedas').update(f).eq('id',id);if(error)throw error}
     else{const {data,error}=await sb.from('busquedas').insert({...f,marca_id:S.marca.id}).select('id').single();if(error)throw error;id=data.id}
     for(const pid of E.del){const {error}=await sb.from('puntos').update({borrado:true}).eq('id',pid);if(error)throw error}
-    const nuevos=E.pts.filter(p=>!p.id).map(p=>({busqueda_id:id,marca_id:S.marca.id,nombre:p.nombre.trim(),forma:p.forma,estado:p.estado||'Pendiente',barrio:p.barrio||null,lat:p.lat??null,lng:p.lng??null,tramo:p.tramo||null}));
+    const nuevos=E.pts.filter(p=>!p.id).map(p=>({busqueda_id:id,marca_id:S.marca.id,nombre:p.nombre.trim(),forma:p.forma,estado:p.estado||'Pendiente',barrio:p.barrio||null,lat:p.lat??null,lng:p.lng??null,tramo:p.tramo||null,poligono:p.poligono||null}));
     if(nuevos.length){const {error}=await sb.from('puntos').insert(nuevos);if(error)throw error}
     for(const p of E.pts.filter(p=>p.id&&p._dirty)){const {error}=await sb.from('puntos').update({nombre:p.nombre.trim(),lat:p.lat,lng:p.lng}).eq('id',p.id);if(error)throw error}
     toast('Búsqueda guardada');cerrar();await loadBusq();

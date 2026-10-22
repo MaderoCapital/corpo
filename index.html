@@ -317,15 +317,18 @@ function drawNow(){const dpr=window.devicePixelRatio||1,W=cv.clientWidth,H=cv.cl
   if(OC)try{osmLabels(g,OC,W,H,s,boxes)}catch(e){console.warn(e)}
   const r=Math.max(3.5,Math.min(9,3+Math.log2(Math.max(MAP.z,0.01))*1.6+1.5));
   PUNTOS.forEach(p=>{const c=color(p);
-    if(p.t){g.strokeStyle=c;g.globalAlpha=.85;g.lineWidth=r*1.1;g.lineCap='round';g.beginPath();p.t.forEach((q,i)=>{const [x,y]=proj(cv,q[1],q[0]);i?g.lineTo(x,y):g.moveTo(x,y)});g.stroke();g.globalAlpha=1}
+    if(p.pg){g.beginPath();p.pg.forEach((q,i)=>{const [x,y]=proj(cv,q[1],q[0]);i?g.lineTo(x,y):g.moveTo(x,y)});g.closePath();g.fillStyle=c;g.globalAlpha=p===sel?.35:.2;g.fill();g.globalAlpha=1;g.lineWidth=2;g.strokeStyle=c;g.stroke()}
+    else if(p.t){g.strokeStyle=c;g.globalAlpha=.85;g.lineWidth=r*1.1;g.lineCap='round';g.beginPath();p.t.forEach((q,i)=>{const [x,y]=proj(cv,q[1],q[0]);i?g.lineTo(x,y):g.moveTo(x,y)});g.stroke();g.globalAlpha=1}
     else{const [x,y]=proj(cv,p.o,p.a);g.beginPath();g.arc(x,y,p===sel?r+3:r,0,7);g.fillStyle=c;g.fill();g.lineWidth=2;g.strokeStyle=cssv('--bg');g.stroke()}});
 }
+function inPoly(x,y,pg){let c=false;const P=pg.map(q=>proj(cv,q[1],q[0]));for(let i=0,j=P.length-1;i<P.length;j=i++){const [xi,yi]=P[i],[xj,yj]=P[j];if(((yi>y)!==(yj>y))&&(x<(xj-xi)*(y-yi)/(yj-yi)+xi))c=!c}return c}
 function hit(x,y){let best=null,bd=18;PUNTOS.forEach(p=>{let d;
-  if(p.t){const [ax,ay]=proj(cv,p.t[0][1],p.t[0][0]),[bx,by]=proj(cv,p.t[1][1],p.t[1][0]);const vx=bx-ax,vy=by-ay,L=vx*vx+vy*vy||1;const t=Math.max(0,Math.min(1,((x-ax)*vx+(y-ay)*vy)/L));d=Math.hypot(x-(ax+t*vx),y-(ay+t*vy))}
+  if(p.pg){d=inPoly(x,y,p.pg)?10:99}
+  else if(p.t){const [ax,ay]=proj(cv,p.t[0][1],p.t[0][0]),[bx,by]=proj(cv,p.t[1][1],p.t[1][0]);const vx=bx-ax,vy=by-ay,L=vx*vx+vy*vy||1;const t=Math.max(0,Math.min(1,((x-ax)*vx+(y-ay)*vy)/L));d=Math.hypot(x-(ax+t*vx),y-(ay+t*vy))}
   else{const [px,py]=proj(cv,p.o,p.a);d=Math.hypot(x-px,y-py)}
   if(d<bd){bd=d;best=p}});return best}
 function showTip(p){sel=p;if(!p){tip.hidden=true;draw();return}
-  tip.innerHTML='';const b=document.createElement('b');b.textContent=m2(p);const sp=document.createElement('span');sp.textContent=(p.t?'Tramo buscado':'Punto buscado')+(p.b?' · '+p.b:'');tip.append(b,sp);tip.hidden=false;draw()}
+  tip.innerHTML='';const b=document.createElement('b');b.textContent=m2(p);const sp=document.createElement('span');sp.textContent=(p.pg?'Cuadrante buscado':p.t?'Tramo buscado':'Punto buscado')+(p.b?' · '+p.b:'');tip.append(b,sp);tip.hidden=false;draw()}
 function zoomAt(x,y,f){const [lng,lat]=unproj(cv,x,y);MAP.z=Math.min(60,Math.max(0.006,MAP.z*f));const s=scale(cv);MAP.cx=lng-(x-cv.clientWidth/2)/(kx()*s);MAP.cy=lat+(y-cv.clientHeight/2)/s;draw()}
 
 const ptrs=new Map();let moved=0,pinch=null;
@@ -375,7 +378,7 @@ form.addEventListener('submit',async ev=>{
 });
 
 /* mapa: búsquedas activas en vivo desde la base */
-if(API)fetch(API+'/rest/v1/rpc/puntos_publicos',{method:'POST',headers:H,body:'{}'}).then(r=>r.ok?r.json():null).then(d=>{if(Array.isArray(d)&&d.length){PUNTOS=d.map(p=>{const o={a:p.a,o:p.o,b:p.b,mn:p.mn,mx:p.mx};if(Array.isArray(p.t)&&p.t.length>1)o.t=p.t;return o});document.getElementById('count').textContent=`${PUNTOS.length} ubicaciones buscadas en este momento. Tocá un punto para ver la superficie.`;draw()}}).catch(()=>{});
+if(API)fetch(API+'/rest/v1/rpc/puntos_publicos_v2',{method:'POST',headers:H,body:'{}'}).then(r=>r.ok?r.json():null).then(d=>{if(Array.isArray(d)&&d.length){PUNTOS=d.map(p=>{const o={a:p.a,o:p.o,b:p.b,mn:p.mn,mx:p.mx};if(Array.isArray(p.t)&&p.t.length>1)o.t=p.t;if(Array.isArray(p.pg)&&p.pg.length>2)o.pg=p.pg;return o});document.getElementById('count').textContent=`${PUNTOS.length} ubicaciones buscadas en este momento. Tocá un punto para ver la superficie.`;draw()}}).catch(()=>{});
 
 /* enlaces al portal: siempre abren la página completa (fuera del recuadro de la web) */
 {const base=new URL('portal.html',location.href).href;document.getElementById('go-portal').href=base;document.getElementById('go-reg').href=base+'#registro'}
