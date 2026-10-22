@@ -69,6 +69,7 @@ form{display:grid;grid-template-columns:1fr 1fr;gap:14px 14px}
 .fsec{margin:6px 0 -4px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600}
 .fsec small{letter-spacing:0;text-transform:none;font-weight:400}
 .tsec{display:grid;gap:14px}
+.hint{margin:-6px 0 0;font-size:13.5px;color:var(--muted)}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 @media (max-width:480px){.g2{grid-template-columns:1fr}}
 label{font-size:13.5px;font-weight:500}
@@ -149,15 +150,16 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
         <div class="f"><label for="l-apellido">Apellido</label><input id="l-apellido" name="apellido" required autocomplete="family-name"></div>
         <div class="f"><label for="l-tel">Teléfono</label><input id="l-tel" name="telefono" type="tel" required autocomplete="tel"></div>
         <div class="f"><label for="l-email">Email</label><input id="l-email" name="email" type="email" required autocomplete="email"></div>
-        <div class="f full"><label for="l-tipo">¿Qué sos?</label><select id="l-tipo" name="tipo" required><option value="">Elegí una opción</option><option>Propietario</option><option>Inmobiliaria</option><option value="Referido">Referido (te paso el contacto de un propietario)</option></select></div>
+        <div class="f full"><label for="l-tipo">¿Qué sos?</label><select id="l-tipo" name="tipo" required><option value="">Elegí una opción</option><option>Propietario</option><option>Inmobiliaria</option><option value="Referido">Referido (conozco un local disponible)</option></select></div>
         <div class="tsec full" data-solo="Inmobiliaria" hidden><div class="f"><label for="l-inmo">Nombre de la inmobiliaria</label><input id="l-inmo" name="inmobiliaria" data-req="Inmobiliaria" autocomplete="organization"></div></div>
         <div class="tsec full" data-solo="Referido" hidden>
-          <p class="fsec">Datos del propietario</p>
+          <p class="fsec">Datos del propietario <small>· opcional</small></p>
+          <p class="hint">Si preferís, dejalos vacíos: hablamos con vos y vos hacés de nexo con el propietario.</p>
           <div class="g2">
-            <div class="f"><label for="l-pnom">Nombre</label><input id="l-pnom" name="prop_nombre" data-req="Referido"></div>
-            <div class="f"><label for="l-pape">Apellido</label><input id="l-pape" name="prop_apellido" data-req="Referido"></div>
+            <div class="f"><label for="l-pnom">Nombre</label><input id="l-pnom" name="prop_nombre"></div>
+            <div class="f"><label for="l-pape">Apellido</label><input id="l-pape" name="prop_apellido"></div>
             <div class="f"><label for="l-ptel">Teléfono</label><input id="l-ptel" name="prop_telefono" type="tel"></div>
-            <div class="f"><label for="l-pem">Email <small>si lo tenés</small></label><input id="l-pem" name="prop_email" type="email"></div>
+            <div class="f"><label for="l-pem">Email</label><input id="l-pem" name="prop_email" type="email"></div>
           </div>
         </div>
         <div class="tsec full" data-solo="Propietario Inmobiliaria Referido" hidden>
@@ -391,7 +393,6 @@ form.addEventListener('submit',async ev=>{
   if(miss.length){miss[0].focus();msg.className='msg err';msg.textContent='Completá los campos obligatorios.';return}
   const bad=[...form.querySelectorAll('[type=email]')].find(el=>!el.closest('[hidden]')&&el.value&&!el.checkValidity());if(bad){bad.focus();msg.className='msg err';msg.textContent='Revisá el email: parece incompleto.';return}
   const d=Object.fromEntries(new FormData(form).entries());const t=d.tipo;
-  if(t==='Referido'&&!(d.prop_telefono||'').trim()&&!(d.prop_email||'').trim()){document.getElementById('l-ptel').focus();msg.className='msg err';msg.textContent='Dejanos un teléfono o un email del propietario.';return}
   btn.disabled=true;msg.className='msg';msg.textContent='Enviando…';let repetido=false;
   if(!d.website){
     if(!API){btn.disabled=false;msg.className='msg err';msg.textContent='El formulario todavía no está conectado.';return}
