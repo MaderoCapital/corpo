@@ -83,6 +83,7 @@ button.send:disabled{opacity:.5;cursor:default}
 .done{display:grid;gap:10px;padding:8px 0}
 .done h3{font-family:var(--f-display);font-weight:500;font-size:22px;margin:0}
 .done p{margin:0;color:var(--muted)}
+.done p.aviso{color:var(--ink);background:#f4ecda;border-left:3px solid var(--gold);padding:12px 14px;border-radius:2px}
 .done button{justify-self:start;font:500 14px var(--f-body);background:none;border:1px solid var(--line);color:var(--ink);border-radius:4px;padding:9px 14px;cursor:pointer}
 button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 
@@ -391,7 +392,7 @@ form.addEventListener('submit',async ev=>{
   const bad=[...form.querySelectorAll('[type=email]')].find(el=>!el.closest('[hidden]')&&el.value&&!el.checkValidity());if(bad){bad.focus();msg.className='msg err';msg.textContent='Revisá el email: parece incompleto.';return}
   const d=Object.fromEntries(new FormData(form).entries());const t=d.tipo;
   if(t==='Referido'&&!(d.prop_telefono||'').trim()&&!(d.prop_email||'').trim()){document.getElementById('l-ptel').focus();msg.className='msg err';msg.textContent='Dejanos un teléfono o un email del propietario.';return}
-  btn.disabled=true;msg.className='msg';msg.textContent='Enviando…';
+  btn.disabled=true;msg.className='msg';msg.textContent='Enviando…';let repetido=false;
   if(!d.website){
     if(!API){btn.disabled=false;msg.className='msg err';msg.textContent='El formulario todavía no está conectado.';return}
     const tx=(v,n)=>{v=String(v||'').trim();return v?v.slice(0,n):null},nm=v=>v===''||v==null?null:Number(v);
@@ -399,15 +400,17 @@ form.addEventListener('submit',async ev=>{
       inmobiliaria:t==='Inmobiliaria'?tx(d.inmobiliaria,200):null,
       prop_nombre:t==='Referido'?tx(d.prop_nombre,200):null,prop_apellido:t==='Referido'?tx(d.prop_apellido,200):null,prop_telefono:t==='Referido'?tx(d.prop_telefono,60):null,prop_email:t==='Referido'?tx(d.prop_email,200):null,
       direccion:tx(d.direccion,300),barrio:tx(d.barrio,200),operacion:d.operacion,superficie:nm(d.superficie),frente:nm(d.frente)};
+    if(row.direccion){try{const q=await fetch(API+'/rest/v1/rpc/ubicacion_repetida',{method:'POST',headers:H,body:JSON.stringify({p_direccion:row.direccion,p_barrio:row.barrio||''})});if(q.ok)repetido=(await q.json())===true}catch(e){}}
     try{const r=await fetch(API+'/rest/v1/locales',{method:'POST',headers:{...H,'Prefer':'return=minimal'},body:JSON.stringify(row)});if(!r.ok)throw new Error(r.status)}
     catch(e){btn.disabled=false;msg.className='msg err';msg.textContent='No se pudo enviar. Revisá tu conexión y probá de nuevo.';return}
   }
   const box=document.createElement('div');box.className='done';
   const h=document.createElement('h3');h.textContent=`Gracias, ${String(d.nombre).trim().split(' ')[0]}.`;
   const p=document.createElement('p');p.textContent=t==='Referido'?'Recibimos el contacto. Te vamos a escribir en los próximos días hábiles.':'Recibimos tu local. Te vamos a contactar en los próximos días hábiles.';
+  let aviso=null;if(repetido){aviso=document.createElement('p');aviso.className='aviso';aviso.textContent='Ya tenemos registrado un inmueble en esta misma ubicación. Nos vamos a poner en contacto con vos para chequear si se trata del mismo local o de uno distinto.'}
   const again=document.createElement('button');again.type='button';again.textContent='Enviar otro local';
   again.onclick=()=>{form.reset();syncTipo();box.remove();form.hidden=false;btn.disabled=false;msg.textContent=''};
-  box.append(h,p,again);form.hidden=true;form.after(box);sendHeight();
+  box.append(h,p);if(aviso)box.append(aviso);box.append(again);form.hidden=true;form.after(box);sendHeight();
 });
 
 /* mapa: búsquedas activas en vivo desde la base */
