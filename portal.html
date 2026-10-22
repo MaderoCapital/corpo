@@ -365,8 +365,8 @@ const titulo=b=>b.titulo||[m2txt(b.m2min,b.m2max),b.zonas].filter(Boolean).join(
 const colorE={Activa:'#2f7a4c',Pausada:'#c88a2a',Cerrada:'#9a948a'};
 function visibles(){const q=S.q.toLowerCase();return S.busq.filter(b=>(S.filtro==='Todas'||b.estado===S.filtro)&&(!q||[b.titulo,b.zonas,b.requisitos,...b.puntos.map(p=>p.nombre+' '+(p.barrio||''))].join(' ').toLowerCase().includes(q)))}
 function renderList(){
-  const c={Activa:0,Pausada:0,Cerrada:0};S.busq.forEach(b=>c[b.estado]++);const ub=S.busq.filter(b=>b.estado==='Activa').reduce((a,b)=>a+b.puntos.length,0);
-  $('#stats').innerHTML=[...ESTADOS.map(e=>[e,c[e],e==='Activa'?'activas':e==='Pausada'?'pausadas':'cerradas']),['Todas',S.busq.length,'en total']].map(([k,n,l])=>`<button class="stat" data-f="${k}" aria-pressed="${S.filtro===k}"><b>${n}</b>${l}</button>`).join('')+`<span class="stat" style="cursor:default"><b>${ub}</b>ubicaciones activas</span>`;
+  const c={Activa:0,Pausada:0,Cerrada:0};S.busq.forEach(b=>c[b.estado]++);
+  $('#stats').innerHTML=[...ESTADOS.map(e=>[e,c[e],e==='Activa'?'activas':e==='Pausada'?'pausadas':'cerradas']),['Todas',S.busq.length,'en total']].map(([k,n,l])=>`<button class="stat" data-f="${k}" aria-pressed="${S.filtro===k}"><b>${n}</b>${l}</button>`).join('');
   $$('#stats [data-f]').forEach(b=>b.onclick=()=>{S.filtro=b.dataset.f;renderList();fitMap()});
   const L_=visibles();
   $('#rows').innerHTML=L_.length?L_.map(b=>`<div class="row${S.sel===b.id?' sel':''}" tabindex="0" data-id="${b.id}">
@@ -568,19 +568,24 @@ async function eqMarcas(){
   $('#n-pend').innerHTML=pend.length?`<span class="badge">${pend.length}</span>`:'';
   const opts=apr.map(m=>`<option value="${m.id}">${esc(m.nombre)}</option>`).join('');
   $('#pe-marcas').innerHTML=`${pend.length?`<h3>Pendientes de aprobación</h3><div class="tcards">${pend.map(m=>{const p=by(m.id)[0]||{};return `<div class="tcard"><div><b>${esc(m.nombre)}</b>${m.rubro?` <span class="muted">· ${esc(m.rubro)}</span>`:''}<div class="m">${esc([p.nombre,p.cargo,p.email,p.telefono].filter(Boolean).join(' · '))} · se registró el ${fdate(m.creado)}</div></div>
-      <div class="acts"><button class="btn sm pri" data-ap="${m.id}">Aprobar como marca nueva</button><select data-sel="${m.id}" aria-label="Unir a una marca existente"><option value="">Unir a una marca existente…</option>${opts}</select><button class="btn sm" data-un="${m.id}">Unir</button><button class="btn sm danger" data-re="${m.id}">Rechazar</button></div></div>`}).join('')}</div>`:''}
-    <h3>Marcas habilitadas</h3><div class="tcards">${apr.map(m=>`<div class="tcard"><div><b>${esc(m.nombre)}</b><div class="m">${nb(m.id)} búsquedas activas · ${by(m.id).length?by(m.id).map(p=>esc(p.email)).join(', '):'sin usuarios en el portal'}</div></div><div class="acts"><button class="btn sm" data-ver="${m.id}">Ver búsquedas</button></div></div>`).join('')||'<div class="tcard"><span class="muted">Todavía no hay marcas habilitadas.</span></div>'}</div>`;
+      <div class="acts"><button class="btn sm pri" data-ap="${m.id}">Aprobar como marca nueva</button><select data-sel="${m.id}" aria-label="Unir a una marca existente"><option value="">Unir a una marca existente…</option>${opts}</select><button class="btn sm" data-un="${m.id}">Unir</button><button class="btn sm danger" data-re="${m.id}">Rechazar</button><span data-delw="${m.id}"><button class="btn sm ghost danger" data-del="${m.id}">Eliminar</button></span></div></div>`}).join('')}</div>`:''}
+    <h3>Marcas habilitadas</h3><div class="tcards">${apr.map(m=>`<div class="tcard"><div><b>${esc(m.nombre)}</b><div class="m">${nb(m.id)} búsquedas activas · ${by(m.id).length?by(m.id).map(p=>esc(p.email)).join(', '):'sin usuarios en el portal'}</div></div><div class="acts"><button class="btn sm" data-ver="${m.id}">Ver búsquedas</button><span data-delw="${m.id}"><button class="btn sm ghost danger" data-del="${m.id}">Eliminar</button></span></div></div>`).join('')||'<div class="tcard"><span class="muted">Todavía no hay marcas habilitadas.</span></div>'}</div>`;
   $$('[data-ap]').forEach(b=>b.onclick=async()=>{const {error}=await sb.rpc('aprobar_marca',{p_marca:b.dataset.ap});if(error)return toast('No se pudo aprobar.');toast('Marca aprobada');eqMarcas()});
   $$('[data-un]').forEach(b=>b.onclick=async()=>{const to=$(`[data-sel="${b.dataset.un}"]`).value;if(!to)return toast('Elegí la marca a la que pertenece.');const {error}=await sb.rpc('aprobar_marca',{p_marca:b.dataset.un,p_unir_a:to});if(error)return toast('No se pudo unir.');toast('Usuario unido a la marca');eqMarcas()});
   $$('[data-re]').forEach(b=>b.onclick=async()=>{const {error}=await sb.from('marcas').update({rechazada:true}).eq('id',b.dataset.re);if(error)return toast('No se pudo rechazar.');toast('Registro rechazado');eqMarcas()});
+  $$('[data-del]').forEach(b=>b.onclick=()=>{const id=b.dataset.del,m=ms.find(x=>x.id===id);const w=$(`[data-delw="${id}"]`);
+    w.innerHTML=`<span class="confirm">¿Eliminar ${esc(m.nombre)}, sus usuarios y sus búsquedas? No se puede deshacer. <button class="btn sm danger" data-del2>Eliminar</button><button class="btn sm" data-del0>No</button></span>`;
+    $('[data-del0]',w).onclick=()=>eqMarcas();
+    $('[data-del2]',w).onclick=async()=>{const {error}=await sb.rpc('eliminar_marca',{p_marca:id});if(error){console.warn(error);return toast(/equipo/.test(error.message)?'Esa es la cuenta del equipo: no se puede eliminar.':'No se pudo eliminar.')}toast('Marca eliminada');eqMarcas()}});
   $$('[data-ver]').forEach(b=>b.onclick=()=>{const m=ms.find(x=>x.id===b.dataset.ver);S.viewAs=m;S.filtro='Activa';openMarca(m)});
 }
 async function eqLocales(){
   const {data:ls}=await sb.from('locales').select('*').order('creado',{ascending:false});const n=(ls||[]).filter(l=>l.estado==='Nuevo').length;
   $('#n-loc').innerHTML=n?`<span class="badge">${n}</span>`:'';
-  $('#pe-locales').innerHTML=(ls||[]).length?`<div class="tcards">${ls.map(l=>`<div class="tcard"><div><b>${esc(l.direccion)}${l.barrio?', '+esc(l.barrio):''}</b> <span class="muted">· ${fmt(l.superficie)} m²${l.frente?` · frente ${fmt(l.frente)} m`:''} · ${esc(l.operacion||'')}</span>
-      <div class="m">${esc(l.nombre)} · ${esc(l.email||'')} · ${esc(l.telefono||'')} · ${fdate(l.creado)}</div>${l.comentarios?`<div class="m">${esc(l.comentarios)}</div>`:''}</div>
-      <div class="acts"><select data-le="${l.id}" aria-label="Estado del local">${['Nuevo','Contactado','En cartera','Descartado'].map(e=>`<option ${l.estado===e?'selected':''}>${e}</option>`).join('')}</select></div></div>`).join('')}</div>`
+  const jn=(...a)=>a.filter(Boolean).map(esc).join(' · ');
+  $('#pe-locales').innerHTML=(ls||[]).length?`<div class="tcards">${ls.map(l=>`<div class="tcard"><div><b>${esc(l.direccion||'(sin dirección)')}${l.barrio?', '+esc(l.barrio):''}</b> <span class="muted">· ${jn(l.superficie?fmt(l.superficie)+' m²':'',l.frente?'frente '+fmt(l.frente)+' m':'',l.operacion)}</span>
+      <div class="m"><b style="color:var(--ink)">${esc(l.tipo||'Propietario')}${l.inmobiliaria?' · '+esc(l.inmobiliaria):''}</b> · ${jn([l.nombre,l.apellido].filter(Boolean).join(' '),l.email,l.telefono,fdate(l.creado))}</div>${l.tipo==='Referido'?`<div class="m">Propietario: ${jn([l.prop_nombre,l.prop_apellido].filter(Boolean).join(' '),l.prop_telefono,l.prop_email)}</div>`:''}${l.comentarios?`<div class="m">${esc(l.comentarios)}</div>`:''}</div>
+      <div class="acts"><select data-le="${l.id}" aria-label="Estado del local">${['Nuevo','Habilitado','Contactado','En cartera','Descartado'].map(e=>`<option ${l.estado===e?'selected':''}>${e}</option>`).join('')}</select></div></div>`).join('')}</div>`
     :'<p class="muted">Todavía no llegaron locales desde la web.</p>';
   $$('[data-le]').forEach(s=>s.onchange=async()=>{const {error}=await sb.from('locales').update({estado:s.value}).eq('id',s.dataset.le);toast(error?'No se pudo actualizar.':'Estado actualizado');eqLocales()});
 }

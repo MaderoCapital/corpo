@@ -65,7 +65,12 @@ header.site img{width:40px;height:40px;border-radius:6px;display:block}
 .forms .sub{color:var(--muted);font-size:15px;margin:0 0 22px}
 form{display:grid;grid-template-columns:1fr 1fr;gap:14px 14px}
 .f{display:flex;flex-direction:column;gap:5px;min-width:0}
-.f.full{grid-column:1/-1}
+.f.full,.full{grid-column:1/-1}
+.fsec{margin:6px 0 -4px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.fsec small{letter-spacing:0;text-transform:none;font-weight:400}
+.tsec{display:grid;gap:14px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:480px){.g2{grid-template-columns:1fr}}
 label{font-size:13.5px;font-weight:500}
 label small{color:var(--muted);font-weight:400}
 input,select,textarea{font:15px/1.4 var(--f-body);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:10px 12px;width:100%}
@@ -134,20 +139,37 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
 
   <div class="forms">
     <section id="propietarios">
-      <span class="label">Propietarios</span>
+      <span class="label">Locales</span>
       <h2>Postulá tu local</h2>
-      <p class="sub">Lo presentamos a las marcas que buscan en tu zona.</p>
+      <p class="sub">Lo presentamos a las marcas que buscan en tu zona. Si sos propietario, inmobiliaria o conocés a un dueño, contanos.</p>
       <form id="form-local" data-tipo="local" novalidate>
-        <div class="f"><label for="l-nombre">Nombre y apellido</label><input id="l-nombre" name="nombre" required autocomplete="name"></div>
+        <p class="fsec full">Tus datos</p>
+        <div class="f"><label for="l-nombre">Nombre</label><input id="l-nombre" name="nombre" required autocomplete="given-name"></div>
+        <div class="f"><label for="l-apellido">Apellido</label><input id="l-apellido" name="apellido" required autocomplete="family-name"></div>
         <div class="f"><label for="l-tel">Teléfono</label><input id="l-tel" name="telefono" type="tel" required autocomplete="tel"></div>
-        <div class="f full"><label for="l-email">Email</label><input id="l-email" name="email" type="email" required autocomplete="email"></div>
-        <div class="f full"><label for="l-dir">Dirección del local</label><input id="l-dir" name="direccion" required placeholder="Calle y altura"></div>
-        <div class="f"><label for="l-barrio">Barrio o localidad</label><input id="l-barrio" name="barrio" required></div>
-        <div class="f"><label for="l-op">Operación</label><select id="l-op" name="operacion"><option>Alquiler</option><option>Venta</option><option>Alquiler o venta</option></select></div>
-        <div class="f"><label for="l-sup">Superficie (m²)</label><input id="l-sup" name="superficie" type="number" min="1" required></div>
-        <div class="f"><label for="l-frente">Frente (m) <small>opcional</small></label><input id="l-frente" name="frente" type="number" min="0" step="0.1"></div>
-        <div class="f full"><label for="l-com">Comentarios <small>opcional</small></label><textarea id="l-com" name="comentarios" placeholder="Esquina, estado, valor pretendido, link a fotos…"></textarea></div>
-        <button class="send" type="submit">Postular local</button>
+        <div class="f"><label for="l-email">Email</label><input id="l-email" name="email" type="email" required autocomplete="email"></div>
+        <div class="f full"><label for="l-tipo">¿Qué sos?</label><select id="l-tipo" name="tipo" required><option value="">Elegí una opción</option><option>Propietario</option><option>Inmobiliaria</option><option value="Referido">Referido (te paso el contacto de un propietario)</option></select></div>
+        <div class="tsec full" data-solo="Inmobiliaria" hidden><div class="f"><label for="l-inmo">Nombre de la inmobiliaria</label><input id="l-inmo" name="inmobiliaria" data-req="Inmobiliaria" autocomplete="organization"></div></div>
+        <div class="tsec full" data-solo="Referido" hidden>
+          <p class="fsec">Datos del propietario</p>
+          <div class="g2">
+            <div class="f"><label for="l-pnom">Nombre</label><input id="l-pnom" name="prop_nombre" data-req="Referido"></div>
+            <div class="f"><label for="l-pape">Apellido</label><input id="l-pape" name="prop_apellido" data-req="Referido"></div>
+            <div class="f"><label for="l-ptel">Teléfono</label><input id="l-ptel" name="prop_telefono" type="tel"></div>
+            <div class="f"><label for="l-pem">Email <small>si lo tenés</small></label><input id="l-pem" name="prop_email" type="email"></div>
+          </div>
+        </div>
+        <div class="tsec full" data-solo="Propietario Inmobiliaria Referido" hidden>
+          <p class="fsec">El local <small id="l-opc" hidden>· todo opcional</small></p>
+          <div class="g2">
+            <div class="f full"><label for="l-dir">Dirección</label><input id="l-dir" name="direccion" data-req="Propietario Inmobiliaria" placeholder="Calle y altura"></div>
+            <div class="f"><label for="l-barrio">Barrio o localidad</label><input id="l-barrio" name="barrio" data-req="Propietario Inmobiliaria"></div>
+            <div class="f"><label for="l-op">Operación</label><select id="l-op" name="operacion"><option>Alquiler</option><option>Venta</option><option>Alquiler o venta</option></select></div>
+            <div class="f"><label for="l-sup">Superficie (m²)</label><input id="l-sup" name="superficie" type="number" min="1" data-req="Propietario Inmobiliaria"></div>
+            <div class="f"><label for="l-frente">Frente (m)</label><input id="l-frente" name="frente" type="number" min="0" step="0.1" data-req="Propietario Inmobiliaria"></div>
+          </div>
+        </div>
+        <button class="send" type="submit">Enviar</button>
         <p class="msg" aria-live="polite"></p>
       </form>
     </section>
@@ -356,24 +378,35 @@ const H={'apikey':CFG.supabaseKey,'Authorization':'Bearer '+CFG.supabaseKey,'Con
 /* formulario de propietarios: guarda el local en la base */
 const form=document.getElementById('form-local');
 {const hp=document.createElement('input');hp.type='text';hp.name='website';hp.tabIndex=-1;hp.autocomplete='off';hp.setAttribute('aria-hidden','true');hp.style.cssText='position:absolute;left:-9999px;width:1px;height:1px';form.append(hp)}
+const tipoSel=document.getElementById('l-tipo');
+function syncTipo(){const t=tipoSel.value;
+  form.querySelectorAll('[data-solo]').forEach(el=>el.hidden=!t||!el.dataset.solo.split(' ').includes(t));
+  form.querySelectorAll('[data-req]').forEach(el=>{el.required=!!t&&el.dataset.req.split(' ').includes(t)});
+  document.getElementById('l-opc').hidden=t!=='Referido';sendHeight()}
+tipoSel.addEventListener('change',syncTipo);
 form.addEventListener('submit',async ev=>{
   ev.preventDefault();const msg=form.querySelector('.msg'),btn=form.querySelector('.send');
-  const miss=[...form.querySelectorAll('[required]')].filter(el=>!el.value.trim());
+  const miss=[...form.querySelectorAll('[required]')].filter(el=>!el.closest('[hidden]')&&!el.value.trim());
   if(miss.length){miss[0].focus();msg.className='msg err';msg.textContent='Completá los campos obligatorios.';return}
-  const em=form.querySelector('[type=email]');if(!em.checkValidity()){em.focus();msg.className='msg err';msg.textContent='Revisá el email: parece incompleto.';return}
-  const d=Object.fromEntries(new FormData(form).entries());
+  const bad=[...form.querySelectorAll('[type=email]')].find(el=>!el.closest('[hidden]')&&el.value&&!el.checkValidity());if(bad){bad.focus();msg.className='msg err';msg.textContent='Revisá el email: parece incompleto.';return}
+  const d=Object.fromEntries(new FormData(form).entries());const t=d.tipo;
+  if(t==='Referido'&&!(d.prop_telefono||'').trim()&&!(d.prop_email||'').trim()){document.getElementById('l-ptel').focus();msg.className='msg err';msg.textContent='Dejanos un teléfono o un email del propietario.';return}
   btn.disabled=true;msg.className='msg';msg.textContent='Enviando…';
   if(!d.website){
     if(!API){btn.disabled=false;msg.className='msg err';msg.textContent='El formulario todavía no está conectado.';return}
-    const row={nombre:d.nombre.trim().slice(0,200),telefono:(d.telefono||'').slice(0,60),email:(d.email||'').slice(0,200),direccion:d.direccion.trim().slice(0,300),barrio:(d.barrio||'').slice(0,200),operacion:d.operacion,superficie:d.superficie===''?null:Number(d.superficie),frente:d.frente===''?null:Number(d.frente),comentarios:(d.comentarios||'').slice(0,4000)};
+    const tx=(v,n)=>{v=String(v||'').trim();return v?v.slice(0,n):null},nm=v=>v===''||v==null?null:Number(v);
+    const row={tipo:t,nombre:tx(d.nombre,200),apellido:tx(d.apellido,200),telefono:tx(d.telefono,60),email:tx(d.email,200),
+      inmobiliaria:t==='Inmobiliaria'?tx(d.inmobiliaria,200):null,
+      prop_nombre:t==='Referido'?tx(d.prop_nombre,200):null,prop_apellido:t==='Referido'?tx(d.prop_apellido,200):null,prop_telefono:t==='Referido'?tx(d.prop_telefono,60):null,prop_email:t==='Referido'?tx(d.prop_email,200):null,
+      direccion:tx(d.direccion,300),barrio:tx(d.barrio,200),operacion:d.operacion,superficie:nm(d.superficie),frente:nm(d.frente)};
     try{const r=await fetch(API+'/rest/v1/locales',{method:'POST',headers:{...H,'Prefer':'return=minimal'},body:JSON.stringify(row)});if(!r.ok)throw new Error(r.status)}
     catch(e){btn.disabled=false;msg.className='msg err';msg.textContent='No se pudo enviar. Revisá tu conexión y probá de nuevo.';return}
   }
   const box=document.createElement('div');box.className='done';
-  const h=document.createElement('h3');h.textContent=`Gracias, ${String(d.nombre).split(' ')[0]}.`;
-  const p=document.createElement('p');p.textContent='Recibimos tu local. Te vamos a contactar en los próximos días hábiles.';
-  const again=document.createElement('button');again.type='button';again.textContent='Postular otro local';
-  again.onclick=()=>{form.reset();box.remove();form.hidden=false;btn.disabled=false;msg.textContent=''};
+  const h=document.createElement('h3');h.textContent=`Gracias, ${String(d.nombre).trim().split(' ')[0]}.`;
+  const p=document.createElement('p');p.textContent=t==='Referido'?'Recibimos el contacto. Te vamos a escribir en los próximos días hábiles.':'Recibimos tu local. Te vamos a contactar en los próximos días hábiles.';
+  const again=document.createElement('button');again.type='button';again.textContent='Enviar otro local';
+  again.onclick=()=>{form.reset();syncTipo();box.remove();form.hidden=false;btn.disabled=false;msg.textContent=''};
   box.append(h,p,again);form.hidden=true;form.after(box);sendHeight();
 });
 
