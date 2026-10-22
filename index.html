@@ -105,6 +105,7 @@ button.send:disabled{opacity:.5;cursor:default}
 .steps li.done::before{background:var(--gold)}.steps li.now{color:var(--ink);font-weight:600}.steps li.now::before{background:var(--ink)}
 @media (max-width:620px){.steps{grid-template-columns:1fr}.steps li{grid-template-columns:5px 1fr;align-items:center;gap:10px}.steps li::before{height:14px;width:5px}}
 .est-top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;font-size:14px;color:var(--muted)}
+.estotro{flex-basis:100%;text-align:left;background:none;border:0;padding:0;text-decoration:underline;color:var(--muted);cursor:pointer;font:inherit;font-size:14px}
 .est-top button{background:none;border:0;padding:0;text-decoration:underline;color:var(--muted);cursor:pointer;font:inherit}
 .done p.aviso{color:var(--ink);background:#f4ecda;border-left:3px solid var(--gold);padding:12px 14px;border-radius:2px}
 .done button{justify-self:start;font:500 14px var(--f-body);background:none;border:1px solid var(--line);color:var(--ink);border-radius:4px;padding:9px 14px;cursor:pointer}
@@ -205,8 +206,9 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
           <button class="ghostbtn" type="submit">Ingresar</button>
         </form>
         <form id="est-code" class="estform" novalidate hidden>
-          <input id="est-token" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="Código de 6 dígitos" aria-label="Código que te llegó por mail">
+          <input id="est-token" inputmode="numeric" autocomplete="one-time-code" maxlength="12" placeholder="Código que te llegó por mail" aria-label="Código que te llegó por mail">
           <button class="ghostbtn" type="submit">Ver estado</button>
+          <button type="button" class="estotro" id="est-otro">Pedir un código nuevo o usar otro correo</button>
         </form>
         <p class="msg" id="est-msg" aria-live="polite"></p>
         <div id="est-lista" hidden></div>
@@ -478,11 +480,11 @@ form.addEventListener('submit',async ev=>{
       fm.hidden=true;fc.hidden=false;say(`Te mandamos un código a ${mail}. Escribilo acá (o tocá el botón del mail). Revisá también la carpeta de spam.`);document.getElementById('est-token').focus();sendHeight()}
     catch(err){say(err.message==='rate'?'Pediste varios códigos seguidos. Esperá un minuto y probá de nuevo.':'No pudimos enviar el mail. Probá de nuevo en un rato.','err')}
     b.disabled=false});
-  fc.addEventListener('submit',async e=>{e.preventDefault();const tk=document.getElementById('est-token').value.replace(/\D/g,'');if(tk.length<6)return say('El código tiene 6 números.','err');
+  fc.addEventListener('submit',async e=>{e.preventDefault();const tk=document.getElementById('est-token').value.replace(/\D/g,'');if(tk.length<6)return say('Escribí el código completo que te llegó por mail.','err');
     const b=fc.querySelector('button');b.disabled=true;say('Verificando…');
     try{const r=await fetch(API+'/auth/v1/verify',{method:'POST',headers:H,body:JSON.stringify({type:'email',email:mail,token:tk})});const d=await r.json().catch(()=>({}));
-      if(!r.ok||!d.access_token)throw new Error('code');setSes(d.access_token,d.expires_in,mail);say('');await mostrar()}
-    catch(err){say('El código no es válido o ya venció. Pedí uno nuevo.','err')}
+      if(!r.ok||!d.access_token)throw new Error(d.error_code||d.code||'code');setSes(d.access_token,d.expires_in,mail);say('');await mostrar()}
+    catch(err){say(err.message==='over_request_rate_limit'||err.message==='429'?'Hiciste varios intentos seguidos. Esperá un minuto y probá de nuevo.':'Ese código no coincide o ya venció. Usá el código del último mail que te llegó (o tocá el botón del mail), o pedí uno nuevo abajo.','err')}
     b.disabled=false});
   async function mostrar(){if(!ses)return;fm.hidden=true;fc.hidden=true;lst.hidden=false;lst.innerHTML='<p class="m">Cargando…</p>';
     let rows;try{const r=await fetch(API+'/rest/v1/rpc/mis_locales',{method:'POST',headers:{...H,'Authorization':'Bearer '+ses.t},body:'{}'});if(r.status===401){salir();return say('Tu sesión venció. Ingresá de nuevo.','err')}if(!r.ok)throw 0;rows=await r.json()}
@@ -492,6 +494,7 @@ form.addEventListener('submit',async ev=>{
       return `<div class="est-item"><div class="row1"><div><b>${esc(x.direccion||'Local postulado')}${x.barrio?', '+esc(x.barrio):''}</b><div class="m">${x.tipo==='Referido'?'Referido':'Postulado'} el ${fd(x.creado)}</div></div><span class="est-pill ${fin?'fin':no?'no':''}">${esc(x.estado)}</span></div>${no?'':`<ol class="steps">${PASOS.map((p,k)=>`<li class="${k<i?'done':k===i?'now':''}">${esc(p)}</li>`).join('')}</ol>`}<div class="m">${esc(TXT[x.estado]||'')} Actualizado el ${fd(x.actualizado)}.</div></div>`}).join('')
       :`<p class="m">No encontramos locales postulados con este correo. Si usaste otro, ingresá con ese.</p>`);
     document.getElementById('est-salir').onclick=salir;sendHeight()}
+  document.getElementById('est-otro').onclick=()=>{fc.hidden=true;fm.hidden=false;document.getElementById('est-token').value='';say('');const el=document.getElementById('est-email');el.value=mail||el.value;el.focus();sendHeight()};
   function salir(){ses=null;store(null);lst.hidden=true;lst.innerHTML='';fc.hidden=true;fm.hidden=false;say('');sendHeight()}
   if(ses)mostrar().then(()=>{if(location.hash==='#estado')box.scrollIntoView()});
 })();
