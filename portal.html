@@ -125,6 +125,7 @@ label small{font-weight:400;color:var(--muted)}
 .pt input{padding:6px 8px}
 .pt .acts{display:flex;gap:6px;align-items:center}
 .hint{font-size:13px;color:var(--muted)}
+.pill.dup{background:#fdecc8;color:#7a4b00;white-space:normal}
 .modebar{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .modebar .on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
 .dfoot{display:flex;gap:10px;align-items:center;padding:14px 22px;border-top:1px solid var(--line);flex-wrap:wrap}
@@ -445,7 +446,7 @@ function setMode(m){emode=m;etmp=[];$$('[data-mode]').forEach(x=>x.classList.tog
 async function cerrarCuadrante(){if(etmp.length<3)return;const pol=etmp.slice();const c=[pol.reduce((a,q)=>a+q[0],0)/pol.length,pol.reduce((a,q)=>a+q[1],0)/pol.length];const nom=await reverseDir(c[0],c[1]);
   E.pts.push({nombre:nom.barrio?`Cuadrante en ${nom.barrio}`:'Cuadrante',barrio:nom.barrio,forma:'Cuadrante',estado:'Pendiente',lat:+c[0].toFixed(6),lng:+c[1].toFixed(6),poligono:pol});setMode(null);renderPts()}
 async function mapClick(ev){if(!emode)return;const {lat,lng}=ev.latlng;
-  if(emode==='punto'){const nom=await reverseDir(lat,lng);E.pts.push({nombre:nom.nombre||`Punto ${lat.toFixed(5)}, ${lng.toFixed(5)}`,barrio:nom.barrio,forma:'Punto',estado:'Pendiente',lat:+lat.toFixed(6),lng:+lng.toFixed(6)});setMode(null);renderPts()}
+  if(emode==='punto'){const nom=await reverseDir(lat,lng);E.pts.push({nombre:nom.nombre||`Punto ${lat.toFixed(5)}, ${lng.toFixed(5)}`,barrio:nom.barrio,forma:'Punto',estado:'Pendiente',lat:+lat.toFixed(6),lng:+lng.toFixed(6)});setMode(null);renderPts();avisoRep()}
   else if(emode==='tramo'){etmp.push([+lat.toFixed(6),+lng.toFixed(6)]);if(etmp.length===2){const nom=await reverseDir((etmp[0][0]+etmp[1][0])/2,(etmp[0][1]+etmp[1][1])/2);
     E.pts.push({nombre:nom.calle?`${nom.calle} (tramo)`:'Tramo',barrio:nom.barrio,forma:'Tramo',estado:'Pendiente',lat:(etmp[0][0]+etmp[1][0])/2,lng:(etmp[0][1]+etmp[1][1])/2,tramo:etmp});setMode(null);renderPts()}else drawE()}
   else if(emode==='cuadrante'){if(etmp.length>=3){const a=emap.latLngToContainerPoint(etmp[0]),b=emap.latLngToContainerPoint([lat,lng]);if(a.distanceTo(b)<14){cerrarCuadrante();return}}
@@ -457,10 +458,11 @@ function drawE(){if(!elayer)return;elayer.clearLayers();
   if(emode==='cuadrante'&&etmp.length>1)L.polyline(etmp,{color:'#141414',weight:2,dashArray:'5 5'}).addTo(elayer);
   etmp.forEach((q,i)=>L.circleMarker(q,{radius:i===0&&emode==='cuadrante'?8:6,color:'#141414'}).addTo(elayer))}
 function fitE(){const pts=[];E.pts.forEach(p=>{if(p.poligono)p.poligono.forEach(q=>pts.push(q));else if(p.tramo)p.tramo.forEach(q=>pts.push(q));else if(p.lat!=null)pts.push([p.lat,p.lng])});if(pts.length)emap.fitBounds(pts,{padding:[30,30],maxZoom:16})}
+function avisoRep(){const i=E.pts.length-1,r=repetidaEn(E.pts[i],i);if(r)toast('Esa ubicación '+r+'. Si no hace falta, quitala.')}
 function renderPts(first){
   $('#e-pts').innerHTML=E.pts.length?E.pts.map((p,i)=>`<div class="pt"><span class="n">${i+1}</span>
      <input value="${esc(p.nombre)}" data-i="${i}" aria-label="Nombre de la ubicación ${i+1}">
-     <span class="acts">${p.estado&&p.estado!=='Pendiente'?`<span class="pill ${p.estado}" title="Estado según Madero Capital">${p.estado}</span>`:''}<span class="hint">${p.forma==='Tramo'?'tramo':p.forma==='Cuadrante'?'cuadrante':p.lat==null?'sin ubicar':esc(p.barrio||'')}</span><button class="btn sm ghost" data-rm="${i}" aria-label="Quitar ubicación ${i+1}">Quitar</button></span></div>`).join('')
+     <span class="acts">${p.estado&&p.estado!=='Pendiente'?`<span class="pill ${p.estado}" title="Estado según Madero Capital">${p.estado}</span>`:''}<span class="hint">${p.forma==='Tramo'?'tramo':p.forma==='Cuadrante'?'cuadrante':p.lat==null?'sin ubicar':esc(p.barrio||'')}</span>${(r=>r?`<span class="pill dup" title="Ubicación repetida">Repetida: ${esc(r)}</span>`:'')(repetidaEn(p,i))}<button class="btn sm ghost" data-rm="${i}" aria-label="Quitar ubicación ${i+1}">Quitar</button></span></div>`).join('')
     :'<div class="pt"><span></span><span class="hint">Todavía no agregaste ubicaciones. Buscá una dirección o marcala en el mapa.</span><span></span></div>';
   $$('#e-pts input').forEach(x=>x.oninput=()=>{const p=E.pts[+x.dataset.i];p.nombre=x.value;p._dirty=true});
   $$('#e-pts [data-rm]').forEach(x=>x.onclick=()=>{const p=E.pts.splice(+x.dataset.rm,1)[0];if(p.id)E.del.push(p.id);renderPts()});
@@ -477,14 +479,24 @@ async function buscarGeo(q){
   let r=await geo(base+encodeURIComponent(q.includes('Argentina')?q:q+', Argentina'));
   if(!r.length&&/\sy\s/i.test(q))r=await geo(base+encodeURIComponent(limpiarDir(q)+', Argentina'));
   return r}
+/* barrio (en CABA) o localidad y provincia (resto del país), según la dirección exacta */
+function barrioDe(a){a=a||{};const st=a.state||'';const caba=/ciudad aut[oó]noma|^caba$|capital federal/i.test(st)||/ciudad aut[oó]noma/i.test(a.city||'');
+  if(caba)return a.suburb||a.neighbourhood||a.quarter||a.city_district||'CABA';
+  const loc=a.city||a.town||a.village||a.suburb||a.hamlet||a.municipality||a.city_district||(a.county||'').replace(/^(partido|departamento) (de )?/i,'');
+  return [loc,st.replace(/^provincia de /i,'')].filter((v,i,x)=>v&&x.indexOf(v)===i).join(', ')}
+/* ¿esta ubicación ya está cargada en otra búsqueda de la marca (o dos veces en esta)? */
+function distM(a,b,c,d){const k=Math.cos(a*Math.PI/180);return Math.hypot((b-d)*k,a-c)*111320}
+function repetidaEn(p,i){if(!p||p.lat==null||p.forma==='Cuadrante')return '';const cerca=q=>q&&q.lat!=null&&q.forma!=='Cuadrante'&&distM(p.lat,p.lng,q.lat,q.lng)<=60;
+  const j=E.pts.findIndex((q,k)=>k<i&&cerca(q));if(j>=0)return `es la misma que la ubicación ${j+1}`;
+  const b=S.busq.find(b=>b.id!==E.id&&(b.puntos||[]).some(cerca));return b?`ya está en tu búsqueda «${b.titulo||'sin título'}»`:''}
 async function reverseDir(lat,lng){try{const r=await geo(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&addressdetails=1&zoom=18&lat=${lat}&lon=${lng}`);const a=r.address||{};
-  return {nombre:[a.road,a.house_number].filter(Boolean).join(' ')||r.name||'',calle:a.road||'',barrio:a.suburb||a.neighbourhood||a.city_district||a.town||a.city||''}}catch(e){return {}}}
+  return {nombre:[a.road,a.house_number].filter(Boolean).join(' ')||r.name||'',calle:a.road||'',barrio:barrioDe(a)}}catch(e){return {}}}
 async function buscarDir(){const q=$('#e-addr').value.trim();if(q.length<3)return;const box=$('#e-sug');box.hidden=false;box.innerHTML='<button disabled>Buscando…</button>';
   try{const r=await buscarGeo(q);
     box.innerHTML=r.length?r.map((x,i)=>`<button data-i="${i}">${esc(x.display_name)}</button>`).join(''):'<button disabled>No encontramos esa dirección. Probá con calle y altura, o marcala en el mapa.</button>';
     $$('#e-sug [data-i]').forEach(bt=>bt.onclick=()=>{const x=r[+bt.dataset.i],a=x.address||{};
-      E.pts.push({nombre:q,barrio:a.suburb||a.neighbourhood||a.city_district||a.town||a.city||'',forma:'Punto',estado:'Pendiente',lat:+(+x.lat).toFixed(6),lng:+(+x.lon).toFixed(6)});
-      box.hidden=true;$('#e-addr').value='';renderPts()})}
+      E.pts.push({nombre:q,barrio:barrioDe(a),forma:'Punto',estado:'Pendiente',lat:+(+x.lat).toFixed(6),lng:+(+x.lon).toFixed(6)});
+      box.hidden=true;$('#e-addr').value='';renderPts();avisoRep()})}
   catch(e){box.innerHTML='<button disabled>El buscador no respondió. Probá de nuevo o marcá el punto en el mapa.</button>'}}
 
 async function guardar(){const msg=$('#e-msg'),btn=$('#e-save');
@@ -552,7 +564,7 @@ async function importarGo(){const msg=$('#i-msg'),go=$('#i-go');go.disabled=true
       const pts=[];for(const u of (o.ubicaciones||'').split('|').map(s=>s.trim()).filter(Boolean)){
         let g=null;try{g=(await buscarGeo(u+(o.zonas&&!/argentina/i.test(u)?', '+o.zonas:'')))[0]||(await buscarGeo(u))[0]}catch(e){}
         const a=g?.address||{};if(!g)sinUbicar++;
-        pts.push({busqueda_id:data.id,marca_id:S.marca.id,nombre:u,forma:g?'Punto':'Zona',estado:'Pendiente',lat:g?+(+g.lat).toFixed(6):null,lng:g?+(+g.lon).toFixed(6):null,barrio:a.suburb||a.neighbourhood||a.city_district||a.town||a.city||null});tick()}
+        pts.push({busqueda_id:data.id,marca_id:S.marca.id,nombre:u,forma:g?'Punto':'Zona',estado:'Pendiente',lat:g?+(+g.lat).toFixed(6):null,lng:g?+(+g.lon).toFixed(6):null,barrio:barrioDe(a)||null});tick()}
       if(pts.length){const {error:e2}=await sb.from('puntos').insert(pts);if(e2)throw e2}}
     toast(`Importaste ${IMP.length} búsquedas`+(sinUbicar?` · ${sinUbicar} ubicaciones para marcar a mano`:''));cerrar();S.filtro='Todas';await loadBusq();
   }catch(e){console.warn(e);msg.className='msg err';msg.textContent=`Se cortó la importación en la fila ${hecho}. Lo cargado hasta ahí quedó guardado; revisá la lista antes de reintentar.`;go.disabled=false;loadBusq()}}
