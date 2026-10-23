@@ -218,3 +218,24 @@ language sql security definer set search_path = public as $$
 $$;
 revoke all on function public.crm_lock(text) from public, anon, authenticated;
 revoke all on function public.crm_unlock() from public, anon, authenticated;
+
+-- Una llamada para empezar (candado + datos) y otra para terminar (cambios + liberar candado)
+create or replace function public.crm_sync_inicio(p_quien text) returns jsonb
+language plpgsql security definer set search_path = public as $$
+begin
+  if not crm_lock(p_quien) then return jsonb_build_object('lock', false); end if;
+  return jsonb_build_object('lock', true, 'pull', crm_pull(null));
+end $$;
+create or replace function public.crm_sync_fin(p jsonb) returns jsonb
+language plpgsql security definer set search_path = public as $$
+declare r jsonb;
+begin
+  r := crm_push(p);
+  perform crm_unlock();
+  return r;
+end $$;
+revoke all on function public.crm_sync_inicio(text) from public, anon, authenticated;
+revoke all on function public.crm_sync_fin(jsonb) from public, anon, authenticated;
+
+-- Mantenimiento (23/10): se quitaron funciones sin uso (mis_referidos, puntos_publicos, ubicacion_repetida(text))
+-- y se fijó search_path en dir_limpia, dir_clave, dir_num, misma_ubicacion y mismo_barrio.
