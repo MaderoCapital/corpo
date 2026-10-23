@@ -468,9 +468,11 @@ form.addEventListener('submit',async ev=>{
   const store=v=>{try{v?localStorage.setItem(KEY,JSON.stringify(v)):localStorage.removeItem(KEY)}catch(e){}};
   function setSes(tok,exp,email){ses={t:tok,exp:Date.now()+(exp||3600)*1000-60000,email};store(ses)}
   // volvió desde el botón del mail
-  if(/access_token=/.test(location.hash)){const h=new URLSearchParams(location.hash.slice(1));let em='';try{em=JSON.parse(atob(h.get('access_token').split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).email||''}catch(e){}
-    setSes(h.get('access_token'),+h.get('expires_in'),em);history.replaceState(null,'',location.pathname+'#estado')}
-  else ses=load();
+  // el link vuelve como index.html#estado#access_token=... : leer desde "access_token="
+  const hs=location.hash,ia=hs.indexOf('access_token='),ie=hs.indexOf('error');let linkErr=false;
+  if(ia>=0){const h=new URLSearchParams(hs.slice(ia));const tok=h.get('access_token');let em='';try{em=JSON.parse(decodeURIComponent(escape(atob(tok.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))))).email||''}catch(e){}
+    if(tok)setSes(tok,+h.get('expires_in'),em);history.replaceState(null,'',location.pathname+'#estado')}
+  else{ses=load();if(ie>=0){linkErr=true;history.replaceState(null,'',location.pathname+'#estado')}}
   fm.addEventListener('submit',async e=>{e.preventDefault();const el=document.getElementById('est-email');mail=el.value.trim();
     if(!mail||!el.checkValidity()){el.focus();return say('Escribí tu correo electrónico.','err')}
     const b=fm.querySelector('button');b.disabled=true;say('Enviando…');
@@ -484,7 +486,7 @@ form.addEventListener('submit',async ev=>{
     const b=fc.querySelector('button');b.disabled=true;say('Verificando…');
     try{const r=await fetch(API+'/auth/v1/verify',{method:'POST',headers:H,body:JSON.stringify({type:'email',email:mail,token:tk})});const d=await r.json().catch(()=>({}));
       if(!r.ok||!d.access_token)throw new Error(d.error_code||d.code||'code');setSes(d.access_token,d.expires_in,mail);say('');await mostrar()}
-    catch(err){say(err.message==='over_request_rate_limit'||err.message==='429'?'Hiciste varios intentos seguidos. Esperá un minuto y probá de nuevo.':'Ese código no coincide o ya venció. Usá el código del último mail que te llegó (o tocá el botón del mail), o pedí uno nuevo abajo.','err')}
+    catch(err){say(err.message==='over_request_rate_limit'||err.message==='429'?'Hiciste varios intentos seguidos. Esperá un minuto y probá de nuevo.':'Ese código no coincide o ya venció. Cada vez que pedís un código, los anteriores dejan de servir, y si tocaste el botón del mail el código ya se usó. Pedí uno nuevo abajo y usá solo el último.','err')}
     b.disabled=false});
   async function mostrar(){if(!ses)return;fm.hidden=true;fc.hidden=true;lst.hidden=false;lst.innerHTML='<p class="m">Cargando…</p>';
     let rows;try{const r=await fetch(API+'/rest/v1/rpc/mis_locales',{method:'POST',headers:{...H,'Authorization':'Bearer '+ses.t},body:'{}'});if(r.status===401){salir();return say('Tu sesión venció. Ingresá de nuevo.','err')}if(!r.ok)throw 0;rows=await r.json()}
@@ -497,6 +499,7 @@ form.addEventListener('submit',async ev=>{
   document.getElementById('est-otro').onclick=()=>{fc.hidden=true;fm.hidden=false;document.getElementById('est-token').value='';say('');const el=document.getElementById('est-email');el.value=mail||el.value;el.focus();sendHeight()};
   function salir(){ses=null;store(null);lst.hidden=true;lst.innerHTML='';fc.hidden=true;fm.hidden=false;say('');sendHeight()}
   if(ses)mostrar().then(()=>{if(location.hash==='#estado')box.scrollIntoView()});
+  else if(linkErr){say('El botón del mail ya se usó o venció. Escribí tu correo para recibir un código nuevo.','err');box.scrollIntoView()}
 })();
 
 /* mapa: búsquedas activas en vivo desde la base */
