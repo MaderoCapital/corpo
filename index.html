@@ -546,7 +546,7 @@ if(API)fetch(API+'/rest/v1/rpc/puntos_publicos_v2',{method:'POST',headers:H,body
 {const base=new URL('portal.html',location.href).href;document.getElementById('go-portal').href=base;document.getElementById('go-reg').href=base+'#registro'}
 
 /* dentro de la web de Madero Capital: ocultar el encabezado propio y avisar la altura */
-const embedded=window.self!==window.top;
+/* el encabezado con logo y nombre se muestra también dentro de maderocapital.com.ar */
 if(embedded)document.querySelector('header.site').hidden=true;
 function sendHeight(){if(embedded)try{parent.postMessage({maderoCorpoHeight:document.documentElement.scrollHeight},'*')}catch(e){}}
 new ResizeObserver(sendHeight).observe(document.body);addEventListener('load',sendHeight);
