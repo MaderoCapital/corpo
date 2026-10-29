@@ -167,7 +167,7 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
   <div class="mapbox">
     <canvas id="map" aria-label="Mapa de búsquedas activas de locales"></canvas>
     <div class="ctl"><button id="zin" aria-label="Acercar">+</button><button id="zout" aria-label="Alejar">−</button><button id="zcaba" aria-label="Ver la Ciudad de Buenos Aires" title="Ver CABA" style="font-size:10px;font-weight:700;letter-spacing:0">CABA</button><button id="zall" aria-label="Ver todo el país" title="Ver todo el país" style="font-size:12px;font-weight:600">AR</button></div>
-    <div class="zbus" role="search"><input id="zq" type="search" placeholder="Buscar ciudad o zona: Mar del Plata, Bariloche…" autocomplete="off" aria-label="Buscar ciudad o zona en el mapa" enterkeyhint="search"><div id="zsug" class="zsug" hidden></div></div>
+    <div class="zbus" role="search"><input id="zq" type="search" placeholder="Buscar ciudad o zona" autocomplete="off" aria-label="Buscar ciudad o zona en el mapa" enterkeyhint="search"><div id="zsug" class="zsug" hidden></div></div>
     <div class="tip" id="tip" hidden></div>
   </div>
   <div class="count" id="count"></div>
@@ -545,9 +545,8 @@ if(API)fetch(API+'/rest/v1/rpc/puntos_publicos_v2',{method:'POST',headers:H,body
 /* enlaces al portal: siempre abren la página completa (fuera del recuadro de la web) */
 {const base=new URL('portal.html',location.href).href;document.getElementById('go-portal').href=base;document.getElementById('go-reg').href=base+'#registro'}
 
-/* dentro de la web de Madero Capital: ocultar el encabezado propio y avisar la altura */
-/* el encabezado con logo y nombre se muestra también dentro de maderocapital.com.ar */
-if(embedded)document.querySelector('header.site').hidden=true;
+/* dentro de la web de Madero Capital: avisar la altura (el encabezado con logo y nombre se muestra igual) */
+const embedded=window.self!==window.top;
 function sendHeight(){if(embedded)try{parent.postMessage({maderoCorpoHeight:document.documentElement.scrollHeight},'*')}catch(e){}}
 new ResizeObserver(sendHeight).observe(document.body);addEventListener('load',sendHeight);
 
