@@ -46,7 +46,7 @@ header.site img{width:40px;height:40px;border-radius:6px;display:block}
 
 /* mapa */
 .map-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:14px}
-.map-head h2{font-size:24px}
+.map-head h2{font-size:min(24px,calc((100vw - 36px)/17.6));white-space:nowrap;line-height:1.2}
 .map-head p{margin:4px 0 0;color:var(--muted);font-size:15px}
 .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13.5px;color:var(--muted)}
 .legend span{display:flex;align-items:center;gap:7px}
@@ -419,6 +419,8 @@ function fitBB(w,so,e,n){const W=cv.clientWidth||320,H=cv.clientHeight||320,B=Ma
 {const sel=document.getElementById('zprov');
  sel.insertAdjacentHTML('beforeend',PROVBB.map((b,i)=>`<option value="${i}">${b[0]}</option>`).join(''));
  sel.onchange=()=>{const b=PROVBB[+sel.value];if(b)fitBB(b[1],b[2],b[3],b[4])}}
+function fitMH(){const h=document.querySelector('.map-head h2'),box=document.querySelector('.map-head');if(!h||!box)return;h.style.fontSize='';if(innerWidth>=700)return;const fs=parseFloat(getComputedStyle(h).fontSize),w=h.scrollWidth,av=box.clientWidth;if(w&&av)h.style.fontSize=Math.min(24,fs*av/w*0.985)+'px'}
+fitMH();addEventListener('resize',fitMH);if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fitMH);
 document.getElementById('zcaba').onclick=()=>{MAP.cx=-58.445;MAP.cy=-34.615;MAP.z=1;showTip(null);draw();document.getElementById('zprov').value='0'};
 new ResizeObserver(draw).observe(cv);
 if(window.matchMedia)matchMedia('(prefers-color-scheme: dark)').addEventListener('change',draw);
