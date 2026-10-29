@@ -176,7 +176,7 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
         <div class="f"><label for="l-apellido">Apellido</label><input id="l-apellido" name="apellido" required autocomplete="family-name"></div>
         <div class="f"><label for="l-tel">Teléfono</label><input id="l-tel" name="telefono" type="tel" required autocomplete="tel"></div>
         <div class="f"><label for="l-email">Email</label><input id="l-email" name="email" type="email" required autocomplete="email"></div>
-        <div class="f full"><label for="l-tipo">¿Qué sos?</label><select id="l-tipo" name="tipo" required><option value="">Elegí una opción</option><option>Propietario</option><option>Inmobiliaria</option><option value="Referido">Referido (conozco un local disponible)</option></select></div>
+        <div class="f full"><label for="l-tipo">¿Qué sos?</label><select id="l-tipo" name="tipo" required><option value="">Elegí una opción</option><option>Propietario</option><option>Desarrolladora</option><option>Inmobiliaria</option><option value="Referido">Referido (conozco un local disponible)</option></select></div>
         <div class="tsec full" data-solo="Inmobiliaria" hidden><div class="f"><label for="l-inmo">Nombre de la inmobiliaria</label><input id="l-inmo" name="inmobiliaria" data-req="Inmobiliaria" autocomplete="organization"></div></div>
         <div class="tsec full" data-solo="Referido" hidden>
           <p class="fsec">Datos del propietario <small>· opcional</small></p>
@@ -186,6 +186,15 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
             <div class="f"><label for="l-pape">Apellido</label><input id="l-pape" name="prop_apellido"></div>
             <div class="f"><label for="l-ptel">Teléfono</label><input id="l-ptel" name="prop_telefono" type="tel"></div>
             <div class="f"><label for="l-pem">Email</label><input id="l-pem" name="prop_email" type="email"></div>
+          </div>
+        </div>
+        <div class="tsec full" data-solo="Desarrolladora" hidden>
+          <p class="fsec">El proyecto</p>
+          <p class="hint">Con esto alcanza: después te llamamos para ver el detalle de cada local.</p>
+          <div class="g2">
+            <div class="f full"><label for="l-pdir">Dirección del proyecto</label><input id="l-pdir" name="proy_direccion" data-req="Desarrolladora" placeholder="Calle y altura"></div>
+            <div class="f"><label for="l-pbarrio">Barrio o localidad</label><input id="l-pbarrio" name="proy_barrio"><small id="l-pbhint" class="bhint" aria-live="polite"></small></div>
+            <div class="f"><label for="l-cant">Cantidad de locales</label><input id="l-cant" name="cant_locales" type="number" min="1" max="10000" data-req="Desarrolladora"></div>
           </div>
         </div>
         <div class="tsec full" data-solo="Propietario Inmobiliaria Referido" hidden>
@@ -442,13 +451,14 @@ form.addEventListener('submit',async ev=>{
       inmobiliaria:t==='Inmobiliaria'?tx(d.inmobiliaria,200):null,
       prop_nombre:t==='Referido'?tx(d.prop_nombre,200):null,prop_apellido:t==='Referido'?tx(d.prop_apellido,200):null,prop_telefono:t==='Referido'?tx(d.prop_telefono,60):null,prop_email:t==='Referido'?tx(d.prop_email,200):null,
       direccion:tx(d.direccion,300),barrio:tx(d.barrio,200),operacion:d.operacion,superficie:nm(d.superficie),frente:nm(d.frente)};
+    if(t==='Desarrolladora'){Object.assign(row,{direccion:tx(d.proy_direccion,300),barrio:tx(d.proy_barrio,200),operacion:null,superficie:null,frente:null,cant_locales:nm(d.cant_locales)})}
     if(row.direccion){try{const q=await fetch(API+'/rest/v1/rpc/ubicacion_repetida',{method:'POST',headers:H,body:JSON.stringify({p_direccion:row.direccion,p_barrio:row.barrio||''})});if(q.ok)repetido=(await q.json())===true}catch(e){}}
     try{const r=await fetch(API+'/rest/v1/locales',{method:'POST',headers:{...H,'Prefer':'return=minimal'},body:JSON.stringify(row)});if(!r.ok)throw new Error(r.status)}
     catch(e){btn.disabled=false;msg.className='msg err';msg.textContent='No se pudo enviar. Revisá tu conexión y probá de nuevo.';return}
   }
   const box=document.createElement('div');box.className='done';
   const h=document.createElement('h3');h.textContent=`Gracias, ${String(d.nombre).trim().split(' ')[0]}.`;
-  const p=document.createElement('p');p.textContent=t==='Referido'?'Recibimos el contacto. Te vamos a escribir en los próximos días hábiles.':'Recibimos tu local. Te vamos a contactar en los próximos días hábiles.';
+  const p=document.createElement('p');p.textContent=t==='Referido'?'Recibimos el contacto. Te vamos a escribir en los próximos días hábiles.':t==='Desarrolladora'?'Recibimos tu proyecto. Te vamos a llamar en los próximos días hábiles para ver el detalle de cada local.':'Recibimos tu local. Te vamos a contactar en los próximos días hábiles.';
   let aviso=null;if(repetido){aviso=document.createElement('p');aviso.className='aviso';aviso.textContent='Ya tenemos registrado un inmueble en esta misma ubicación. Nos vamos a poner en contacto con vos para chequear si se trata del mismo local o de uno distinto.'}
   const again=document.createElement('button');again.type='button';again.textContent='Enviar otro local';
   again.onclick=()=>{form.reset();syncTipo();box.remove();form.hidden=false;btn.disabled=false;msg.textContent=''};
@@ -518,7 +528,7 @@ function sendHeight(){if(embedded)try{parent.postMessage({maderoCorpoHeight:docu
 new ResizeObserver(sendHeight).observe(document.body);addEventListener('load',sendHeight);
 
 /* barrio o localidad automático según la dirección del local */
-(()=>{const dir=document.getElementById('l-dir'),bar=document.getElementById('l-barrio'),hint=document.getElementById('l-bhint');if(!dir||!bar)return;
+function autoBarrio(di,bi,hi){const dir=document.getElementById(di),bar=document.getElementById(bi),hint=document.getElementById(hi);if(!dir||!bar||!hint)return;
   let tm=null,last='';
   const barrioDe=a=>{a=a||{};const st=a.state||'';const caba=/ciudad aut[oó]noma|^caba$|capital federal/i.test(st)||/ciudad aut[oó]noma/i.test(a.city||'');
     if(caba)return a.suburb||a.neighbourhood||a.quarter||a.city_district||'CABA';
@@ -535,7 +545,8 @@ new ResizeObserver(sendHeight).observe(document.body);addEventListener('load',se
   dir.addEventListener('input',()=>{clearTimeout(tm);tm=setTimeout(buscar,1000)});
   dir.addEventListener('blur',()=>{clearTimeout(tm);buscar()});
   bar.addEventListener('input',()=>{bar.dataset.auto='';hint.textContent=''});
-})();
+}
+autoBarrio('l-dir','l-barrio','l-bhint');autoBarrio('l-pdir','l-pbarrio','l-pbhint');
 
 /* título de punta a punta: en compu se ajusta para terminar justo donde termina el mapa */
 (()=>{const h=document.querySelector('.intro h1');if(!h)return;
