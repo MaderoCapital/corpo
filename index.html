@@ -55,6 +55,7 @@ header.site img{width:40px;height:40px;border-radius:6px;display:block}
 .mapbox canvas{display:block;width:100%;height:clamp(380px,62vh,560px);touch-action:none;cursor:grab}
 .mapbox canvas:active{cursor:grabbing}
 .ctl{position:absolute;right:12px;top:12px;display:flex;flex-direction:column;gap:6px}
+.zprov{position:absolute;left:12px;top:12px;max-width:calc(100% - 80px);width:210px;font-size:14px;padding:8px 10px;background:var(--bg);box-shadow:0 1px 3px rgba(0,0,0,.08)}
 .ctl button{width:36px;height:36px;border-radius:4px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-size:18px;cursor:pointer;line-height:1}
 .tip{position:absolute;left:12px;bottom:12px;background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:10px 14px;font-size:14px;max-width:calc(100% - 24px);box-shadow:0 4px 18px rgba(0,0,0,.08)}
 .tip b{display:block;font-size:17px;font-variant-numeric:tabular-nums}
@@ -161,7 +162,8 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
   </div>
   <div class="mapbox">
     <canvas id="map" aria-label="Mapa de búsquedas activas de locales"></canvas>
-    <div class="ctl"><button id="zin" aria-label="Acercar">+</button><button id="zout" aria-label="Alejar">−</button><button id="zall" aria-label="Ver todo el país" title="Ver todo el país" style="font-size:12px;font-weight:600">AR</button></div>
+    <div class="ctl"><button id="zin" aria-label="Acercar">+</button><button id="zout" aria-label="Alejar">−</button><button id="zcaba" aria-label="Ver la Ciudad de Buenos Aires" title="Ver CABA" style="font-size:10.5px;font-weight:700;letter-spacing:.02em">CABA</button><button id="zall" aria-label="Ver todo el país" title="Ver todo el país" style="font-size:12px;font-weight:600">AR</button></div>
+    <select id="zprov" class="zprov" aria-label="Ir a una provincia"><option value="">Ir a una provincia…</option></select>
     <div class="tip" id="tip" hidden></div>
   </div>
   <div class="count" id="count"></div>
@@ -411,7 +413,13 @@ cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',e=>{ptrs
 cv.addEventListener('wheel',e=>{e.preventDefault();zoomAt(e.offsetX,e.offsetY,Math.exp(-e.deltaY*0.0015))},{passive:false});
 document.getElementById('zin').onclick=()=>zoomAt(cv.clientWidth/2,cv.clientHeight/2,1.6);
 document.getElementById('zout').onclick=()=>zoomAt(cv.clientWidth/2,cv.clientHeight/2,1/1.6);
-document.getElementById('zall').onclick=()=>{MAP.cx=-64.5;MAP.cy=-38.5;MAP.z=0.012;showTip(null)};
+document.getElementById('zall').onclick=()=>{MAP.cx=-64.5;MAP.cy=-38.5;MAP.z=0.012;showTip(null);draw();document.getElementById('zprov').value=''};
+const PROVBB=[['CABA',-58.535,-34.71,-58.33,-34.53],['Gran Buenos Aires',-59.0,-35.0,-58.1,-34.3],['Buenos Aires',-63.4,-41.1,-56.6,-33.2],['Catamarca',-69.1,-30.1,-64.9,-25.2],['Chaco',-63.5,-28.0,-58.3,-24.0],['Chubut',-72.2,-46.0,-63.6,-42.0],['Córdoba',-65.8,-35.0,-61.7,-29.5],['Corrientes',-59.6,-30.8,-55.6,-27.2],['Entre Ríos',-60.8,-34.0,-57.8,-30.1],['Formosa',-62.4,-26.9,-57.6,-22.0],['Jujuy',-67.2,-24.6,-64.2,-21.8],['La Pampa',-68.3,-39.3,-63.4,-35.0],['La Rioja',-69.6,-32.0,-65.4,-27.7],['Mendoza',-70.6,-37.6,-66.5,-32.0],['Misiones',-56.1,-28.2,-53.6,-25.5],['Neuquén',-71.9,-41.1,-68.0,-36.0],['Río Negro',-71.9,-42.0,-62.8,-37.5],['Salta',-68.6,-26.4,-62.3,-22.0],['San Juan',-70.6,-32.6,-67.0,-28.4],['San Luis',-67.4,-36.0,-64.9,-31.8],['Santa Cruz',-73.6,-52.4,-65.7,-46.0],['Santa Fe',-62.9,-34.4,-58.8,-28.0],['Santiago del Estero',-65.2,-30.0,-61.6,-25.6],['Tierra del Fuego',-68.7,-55.1,-65.1,-52.6],['Tucumán',-66.2,-28.0,-64.5,-26.0]];
+function fitBB(w,so,e,n){const W=cv.clientWidth||320,H=cv.clientHeight||320,B=Math.max(W,320);MAP.cx=(w+e)/2;MAP.cy=(so+n)/2;const k=kx();MAP.z=Math.min(60,Math.max(0.006,Math.min(0.92*W*0.24/((e-w)*k*B),0.92*H*0.24/((n-so)*B))));showTip(null);draw()}
+{const sel=document.getElementById('zprov');
+ sel.insertAdjacentHTML('beforeend',PROVBB.map((b,i)=>`<option value="${i}">${b[0]}</option>`).join(''));
+ sel.onchange=()=>{const b=PROVBB[+sel.value];if(b)fitBB(b[1],b[2],b[3],b[4])}}
+document.getElementById('zcaba').onclick=()=>{MAP.cx=-58.445;MAP.cy=-34.615;MAP.z=1;showTip(null);draw();document.getElementById('zprov').value='0'};
 new ResizeObserver(draw).observe(cv);
 if(window.matchMedia)matchMedia('(prefers-color-scheme: dark)').addEventListener('change',draw);
 new MutationObserver(draw).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
