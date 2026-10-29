@@ -40,7 +40,7 @@ header.site img{width:40px;height:40px;border-radius:6px;display:block}
 .intro{padding-block:56px 40px;display:grid;gap:16px}
 .intro h1{font-size:clamp(26px,4.2vw,48px);line-height:1.1;text-wrap:initial}
 .intro h1 .ln{display:block}
-@media (min-width:900px){.intro h1{font-size:min(43px,calc((100vw - 36px)/24.4));white-space:nowrap}.intro h1 .ln{display:inline}}
+@media (min-width:900px){.intro h1{font-size:min(43px,calc((100vw - 36px)/24.4));white-space:nowrap}.intro h1 .ln{display:inline}.intro p{text-align:justify;hyphens:auto;-webkit-hyphens:auto}}
 .intro p{margin:0;color:var(--muted);font-size:clamp(17px,1.6vw,19.5px);line-height:1.6;text-wrap:pretty}
 
 /* mapa */
@@ -536,6 +536,12 @@ new ResizeObserver(sendHeight).observe(document.body);addEventListener('load',se
   dir.addEventListener('blur',()=>{clearTimeout(tm);buscar()});
   bar.addEventListener('input',()=>{bar.dataset.auto='';hint.textContent=''});
 })();
+
+/* título de punta a punta: en compu se ajusta para terminar justo donde termina el mapa */
+(()=>{const h=document.querySelector('.intro h1');if(!h)return;
+  const fit=()=>{h.style.fontSize='';if(innerWidth<900)return;const w=h.parentElement.clientWidth;const base=parseFloat(getComputedStyle(h).fontSize);
+    h.style.fontSize='100px';const sw=h.scrollWidth;h.style.fontSize=Math.min(60,100*w/sw*0.995)+'px'};
+  fit();addEventListener('resize',fit);if(document.fonts)document.fonts.ready.then(fit)})();
 </script>
 
 </body>
