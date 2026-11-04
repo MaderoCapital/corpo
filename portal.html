@@ -383,7 +383,7 @@ function renderList(){
 $('#q').oninput=e=>{S.q=e.target.value;renderList()};
 $('#b-new').onclick=()=>editar(null);$('#b-imp').onclick=()=>importar();
 function drawMap(){if(!layer)return;layer.clearLayers();
-  visibles().forEach(b=>b.puntos.forEach(p=>{const col=p.estado==='Descartada'?'#a8402c':colorE[b.estado];const pop=`<b>${esc(p.nombre)}</b><br>${esc(titulo(b))}`;
+  visibles().forEach(b=>b.puntos.forEach(p=>{const col=colorE[b.estado];const pop=`<b>${esc(p.nombre)}</b><br>${esc(titulo(b))}`;
     if(p.forma==='Cuadrante'&&Array.isArray(p.poligono)&&p.poligono.length>2)L.polygon(p.poligono,{color:col,weight:2,fillOpacity:.2}).bindPopup(pop).addTo(layer);
     else if(p.forma==='Tramo'&&Array.isArray(p.tramo)&&p.tramo.length>1)L.polyline(p.tramo,{color:col,weight:6,opacity:.85}).bindPopup(pop).on('click',()=>{}).addTo(layer);
     else if(p.lat!=null)L.marker([p.lat,p.lng],{icon:L.divIcon({className:'',html:`<div class="mk" style="background:${col}"></div>`,iconSize:[14,14],iconAnchor:[7,7]})}).bindPopup(pop+`<br><button class="btn sm" style="margin-top:6px" onclick="editar(S.busq.find(x=>x.id==='${b.id}'))">Editar búsqueda</button>`).addTo(layer)}))}
@@ -462,7 +462,7 @@ function avisoRep(){const i=E.pts.length-1,r=repetidaEn(E.pts[i],i);if(r)toast('
 function renderPts(first){
   $('#e-pts').innerHTML=E.pts.length?E.pts.map((p,i)=>`<div class="pt"><span class="n">${i+1}</span>
      <input value="${esc(p.nombre)}" data-i="${i}" aria-label="Nombre de la ubicación ${i+1}">
-     <span class="acts">${p.estado&&p.estado!=='Pendiente'?`<span class="pill ${p.estado}" title="Estado según Madero Capital">${p.estado}</span>`:''}<span class="hint">${p.forma==='Tramo'?'tramo':p.forma==='Cuadrante'?'cuadrante':p.lat==null?'sin ubicar':esc(p.barrio||'')}</span>${(r=>r?`<span class="pill dup" title="Ubicación repetida">Repetida: ${esc(r)}</span>`:'')(repetidaEn(p,i))}<button class="btn sm ghost" data-rm="${i}" aria-label="Quitar ubicación ${i+1}">Quitar</button></span></div>`).join('')
+     <span class="acts"><span class="hint">${p.forma==='Tramo'?'tramo':p.forma==='Cuadrante'?'cuadrante':p.lat==null?'sin ubicar':esc(p.barrio||'')}</span>${(r=>r?`<span class="pill dup" title="Ubicación repetida">Repetida: ${esc(r)}</span>`:'')(repetidaEn(p,i))}<button class="btn sm ghost" data-rm="${i}" aria-label="Quitar ubicación ${i+1}">Quitar</button></span></div>`).join('')
     :'<div class="pt"><span></span><span class="hint">Todavía no agregaste ubicaciones. Buscá una dirección o marcala en el mapa.</span><span></span></div>';
   $$('#e-pts input').forEach(x=>x.oninput=()=>{const p=E.pts[+x.dataset.i];p.nombre=x.value;p._dirty=true});
   $$('#e-pts [data-rm]').forEach(x=>x.onclick=()=>{const p=E.pts.splice(+x.dataset.rm,1)[0];if(p.id)E.del.push(p.id);renderPts()});
