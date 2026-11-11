@@ -137,6 +137,12 @@ label small{font-weight:400;color:var(--muted)}
 .drop{border:1.5px dashed var(--line2);border-radius:6px;padding:26px;text-align:center;color:var(--muted);cursor:pointer}
 .drop.over{border-color:var(--gold);background:var(--gold-soft)}
 .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:4px}
+#i-prev{display:grid;gap:22px}
+.mapt td{vertical-align:middle}
+.mapt select{width:auto;min-width:210px;padding:6px 8px}
+.opt{flex-direction:row;align-items:flex-start;gap:10px;font-weight:400;font-size:14.5px;border:1px solid var(--line);border-radius:4px;padding:10px 12px;cursor:pointer}
+.opt input{width:auto;margin-top:4px}
+.opt b{font-weight:600}
 table{border-collapse:collapse;width:100%;font-size:13.5px}
 th,td{text-align:left;padding:8px 10px;border-top:1px solid var(--line);vertical-align:top}
 th{border-top:0;background:var(--soft);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);white-space:nowrap}
@@ -521,53 +527,126 @@ async function eliminar(){const id=E.id;const {error}=await sb.from('busquedas')
   await sb.from('puntos').update({borrado:true}).eq('busqueda_id',id);toast('Búsqueda eliminada');cerrar();await loadBusq()}
 
 /* ---------------- importar planilla ---------------- */
-const COLS=['titulo','operacion','estado','m2min','m2max','frente_min','alq_max_ars','alq_max_usd','zonas','requisitos','ubicaciones'];
-const COLS_TXT={titulo:'Título',operacion:'Operación',estado:'Estado',m2min:'Sup. mín.',m2max:'Sup. máx.',frente_min:'Frente mín.',alq_max_ars:'Alquiler máx. $',alq_max_usd:'Alquiler máx. USD',zonas:'Zona',requisitos:'Requisitos',ubicaciones:'Ubicaciones'};
-function importar(){
+/* La marca sube su Excel tal como lo tiene: elegimos la hoja, adivinamos qué es cada columna
+   (la marca lo confirma o corrige) y detectamos si cada fila es una búsqueda o una ubicación. */
+const CAMPOS=[['','No importar'],['titulo','Título / nombre de la búsqueda'],['ubicaciones','Dirección / esquina'],['zonas','Zona / barrio / localidad'],['sup','Superficie (valor o rango)'],['m2min','Superficie mínima'],['m2max','Superficie máxima'],['frente_min','Frente mínimo'],['alq_max_ars','Alquiler máx. ($)'],['alq_max_usd','Alquiler máx. (USD)'],['operacion','Operación (alquiler/compra)'],['estado','Estado'],['requisitos','Requisitos / observaciones']];
+const CAMPO_TXT=Object.fromEntries(CAMPOS);
+const norm=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'');
+function adivinar(h){const n=norm(h),has=(...w)=>w.some(x=>n.includes(x));if(!n)return '';
+  const sup=has('m2','superficie','metros','mts','sup');
+  if(sup&&has('min','desde'))return 'm2min';if(sup&&has('max','hasta'))return 'm2max';
+  if(has('frente'))return 'frente_min';
+  if(has('alquiler','presupuesto','valor','precio','canon','renta'))return has('usd','dolar','us')?'alq_max_usd':'alq_max_ars';
+  if(sup)return 'sup';
+  if(has('ubicacion','direccion','domicilio','calle','esquina','avenida','corredor','punto','address','altura'))return 'ubicaciones';
+  if(has('zona','barrio','localidad','partido','ciudad','provincia','area','region'))return 'zonas';
+  if(has('operacion'))return 'operacion';
+  if(has('estado','status'))return 'estado';
+  if(has('requisito','nota','comentario','observacion','detalle','caracteristica'))return 'requisitos';
+  if(has('titulo','nombre','busqueda','referencia','proyecto','formato'))return 'titulo';
+  return ''}
+const numDe=v=>{const m=String(v??'').match(/\d[\d.,]*/);return m?num(m[0].replace(/[.,]$/,'')):null};
+const numsDe=v=>(String(v??'').match(/\d[\d.,]*/g)||[]).map(x=>num(x.replace(/[.,]$/,''))).filter(x=>x!=null&&!isNaN(x));
+/* separa varias direcciones escritas en una misma celda */
+function partirDirs(v){let p=String(v??'').split(/\s*[|;\n\r]+\s*/).map(s=>s.trim()).filter(Boolean);
+  const out=[];for(const s of p){const c=s.split(/\s*,\s*/).filter(Boolean);
+    if(c.length>1&&c.every(x=>/\d|\sy\s|&/i.test(x)))out.push(...c);else out.push(s)}
+  return out}
+let IX=null;/* {wb,hoja,filas,hdr,datos,map,modo,clave} */
+function importar(){IX=null;
   $('#layer').innerHTML=`<div class="scrim" data-close></div><aside class="drawer" role="dialog" aria-label="Importar planilla">
-   <div class="dhead"><h2>Importar búsquedas desde una planilla</h2><button class="btn ghost" data-close aria-label="Cerrar">✕</button></div>
+   <div class="dhead"><h2>Importar búsquedas desde tu planilla</h2><button class="btn ghost" data-close aria-label="Cerrar">✕</button></div>
    <div class="dbody imp">
-     <p style="margin:0">Usá una fila por búsqueda. En la columna <b>ubicaciones</b> poné las direcciones o esquinas separadas por <b>|</b> (ej.: <i>Av. Cabildo 2000 | Santa Fe y Coronel Díaz</i>). Las ubicamos en el mapa solas; las que no encontremos quedan para que las marques a mano.</p>
-     <div><button class="btn" id="i-tpl">Descargar plantilla</button></div>
+     <p style="margin:0">Subí tu Excel <b>tal como lo tenés</b>. Después nos confirmás qué dato hay en cada columna y armamos las búsquedas solos. Las direcciones las ubicamos en el mapa; las que no encontremos quedan para que las marques a mano.</p>
      <div class="drop" id="i-drop" tabindex="0">Arrastrá acá tu planilla (Excel o CSV) o hacé clic para elegirla<input type="file" id="i-file" accept=".xlsx,.xls,.csv" hidden></div>
      <div id="i-prev"></div>
+     <p class="hint" style="margin:0">¿Todavía no tenés una planilla? <button class="linkbtn" id="i-tpl">Descargá un modelo</button></p>
    </div>
    <div class="dfoot"><button class="btn pri" id="i-go" disabled>Importar</button><button class="btn" data-close>Cancelar</button><span class="msg" id="i-msg"></span></div></aside>`;
   $$('#layer [data-close]').forEach(x=>x.onclick=cerrar);
-  $('#i-tpl').onclick=()=>{const csv='﻿'+COLS.join(';')+'\n'+['Local esquina zona norte','Alquiler','Activa','150','300','8','','6000','CABA','Esquina, salida de humos','Av. Cabildo y Juramento | Av. Santa Fe y Coronel Díaz'].join(';')+'\n';
-    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='plantilla-busquedas-madero.csv';a.click()};
+  $('#i-tpl').onclick=()=>{const csv='﻿'+['Título','Operación','Superficie mínima','Superficie máxima','Frente','Alquiler máx. USD','Zona','Requisitos','Direcciones'].join(';')+'\n'+['Local esquina zona norte','Alquiler','150','300','8','6000','CABA','Esquina, salida de humos','Av. Cabildo y Juramento | Av. Santa Fe y Coronel Díaz'].join(';')+'\n';
+    const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='modelo-busquedas-madero.csv';a.click()};
   const drop=$('#i-drop'),file=$('#i-file');drop.onclick=()=>file.click();drop.onkeydown=e=>{if(e.key==='Enter')file.click()};
   drop.ondragover=e=>{e.preventDefault();drop.classList.add('over')};drop.ondragleave=()=>drop.classList.remove('over');
   drop.ondrop=e=>{e.preventDefault();drop.classList.remove('over');if(e.dataTransfer.files[0])leer(e.dataTransfer.files[0])};
   file.onchange=()=>{if(file.files[0])leer(file.files[0])};
 }
 async function cargarXLSX(){if(window.XLSX)return;await new Promise((ok,ko)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.onload=ok;s.onerror=ko;document.head.append(s)})}
-const norm=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'');
-const ALIAS={titulo:['titulo','nombre','busqueda'],operacion:['operacion'],estado:['estado'],m2min:['m2min','supmin','superficieminima','supminima','m2minimo','minimom2'],m2max:['m2max','supmax','superficiemaxima','supmaxima','m2maximo','maximom2'],frente_min:['frentemin','frente','frenteminimo'],alq_max_ars:['alqmaxars','alquilermax','alquilermaximo','presupuesto','alquilermaxars'],alq_max_usd:['alqmaxusd','alquilermaxusd','alquilerusd','presupuestousd'],zonas:['zonas','zona','area'],requisitos:['requisitos','notas','comentarios','observaciones'],ubicaciones:['ubicaciones','ubicacion','direcciones','direccion','esquinas','puntos']};
-let IMP=[];
 async function leer(f){const msg=$('#i-msg');msg.className='msg';msg.textContent='Leyendo…';
-  try{await cargarXLSX();const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});const ws=wb.Sheets[wb.SheetNames[0]];const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
-    IMP=rows.map(r=>{const o={};for(const [k,v] of Object.entries(r)){const n=norm(k);for(const [c,al] of Object.entries(ALIAS))if(al.includes(n))o[c]=String(v).trim()}return o}).filter(o=>o.titulo||o.zonas||o.ubicaciones||o.m2min);
-    if(!IMP.length){msg.className='msg err';msg.textContent='No encontramos filas con datos. Revisá que la primera fila tenga los nombres de las columnas de la plantilla.';return}
-    $('#i-prev').innerHTML=`<p style="margin:0 0 8px"><b>${IMP.length}</b> búsquedas y <b>${IMP.reduce((a,o)=>a+(o.ubicaciones?o.ubicaciones.split('|').filter(s=>s.trim()).length:0),0)}</b> ubicaciones para importar:</p>
-      <div class="tablewrap"><table><thead><tr>${COLS.map(c=>`<th>${COLS_TXT[c]}</th>`).join('')}</tr></thead><tbody>${IMP.slice(0,50).map(o=>`<tr>${COLS.map(c=>`<td>${esc(o[c]||'')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>${IMP.length>50?`<p class="hint">Y ${IMP.length-50} filas más.</p>`:''}`;
-    $('#i-go').disabled=false;msg.textContent='';$('#i-go').onclick=importarGo;
+  try{await cargarXLSX();const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});
+    const hojas=wb.SheetNames.filter(n=>XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,defval:''}).some(r=>r.some(c=>String(c).trim())));
+    if(!hojas.length){msg.className='msg err';msg.textContent='La planilla está vacía.';return}
+    IX={wb,hojas,nombre:f.name};$('#i-drop').firstChild.textContent='📄 '+f.name+' · hacé clic o arrastrá otra para cambiarla';
+    usarHoja(hojas[0]);msg.textContent='';
   }catch(e){console.warn(e);msg.className='msg err';msg.textContent='No pudimos leer el archivo. Probá guardarlo como Excel (.xlsx) o CSV.'}}
-async function importarGo(){const msg=$('#i-msg'),go=$('#i-go');go.disabled=true;
-  const total=IMP.reduce((a,o)=>a+1+(o.ubicaciones?o.ubicaciones.split('|').filter(s=>s.trim()).length:0),0);let hecho=0,sinUbicar=0;
+function usarHoja(h){const filas=XLSX.utils.sheet_to_json(IX.wb.Sheets[h],{header:1,defval:'',raw:false}).map(r=>r.map(c=>String(c??'').trim()));
+  /* la fila de encabezados es la primera (de las 10 primeras) con al menos 2 celdas con texto */
+  let hi=filas.findIndex((r,i)=>i<10&&r.filter(Boolean).length>=2);if(hi<0)hi=0;
+  const ancho=Math.max(...filas.map(r=>r.length));const hdr=Array.from({length:ancho},(_,j)=>filas[hi][j]||`Columna ${j+1}`);
+  const datos=filas.slice(hi+1).filter(r=>r.some(Boolean));
+  const usadas=hdr.map((_,j)=>datos.some(r=>r[j]));
+  const map=hdr.map((x,j)=>usadas[j]?adivinar(x):'');
+  IX={...IX,hoja:h,hdr,datos,usadas,map,modo:null,clave:null};
+  sugerirModo();renderImp()}
+/* ¿cada fila es una búsqueda, o cada fila es una ubicación que hay que agrupar? */
+function sugerirModo(){const jt=IX.map.indexOf('titulo'),jz=IX.map.indexOf('zonas'),ju=IX.map.indexOf('ubicaciones');
+  const rep=j=>{if(j<0)return false;const v=IX.datos.map(r=>r[j]).filter(Boolean);return v.length>1&&new Set(v).size<=v.length*0.7};
+  const unaDir=ju>=0&&IX.datos.every(r=>partirDirs(r[ju]).length<=1);
+  if(unaDir&&rep(jt)){IX.modo='agrupar';IX.clave=jt}else if(unaDir&&jt<0&&rep(jz)){IX.modo='agrupar';IX.clave=jz}
+  else{IX.modo='fila';IX.clave=jt>=0?jt:jz>=0?jz:IX.usadas.indexOf(true)}}
+function armarBusquedas(){const M=IX.map,get=(r,c)=>M.map((m,j)=>m===c?r[j]:'').filter(Boolean);
+  const grupos=[];if(IX.modo==='agrupar'&&IX.clave>=0){const idx=new Map();
+    for(const r of IX.datos){const k=r[IX.clave]||'(sin '+IX.hdr[IX.clave]+')';if(!idx.has(k)){idx.set(k,[]);grupos.push(idx.get(k))}idx.get(k).push(r)}}
+  else IX.datos.forEach(r=>grupos.push([r]));
+  return grupos.map(g=>{const p=c=>{for(const r of g){const v=get(r,c).join(' ');if(v)return v}return ''};
+    const o={titulo:p('titulo'),zonas:p('zonas'),requisitos:p('requisitos'),operacion:/compra|venta/i.test(p('operacion'))?'Compra':'Alquiler'};
+    const e=norm(p('estado'));o.estado=/pausad/.test(e)?'Pausada':/cerrad|finaliz|cubiert/.test(e)?'Cerrada':'Activa';
+    o.m2min=numDe(p('m2min'));o.m2max=numDe(p('m2max'));
+    /* superficie en una sola columna: "150 a 300" es un rango; un solo número es la mínima (la máxima no se inventa) */
+    const s=numsDe(p('sup'));if(s.length>=2){o.m2min??=Math.min(s[0],s[1]);o.m2max??=Math.max(s[0],s[1])}else if(s.length===1)o.m2min??=s[0];
+    o.frente_min=numDe(p('frente_min'));o.alq_max_ars=numDe(p('alq_max_ars'));o.alq_max_usd=numDe(p('alq_max_usd'));
+    const dirs=[];for(const r of g){let vs=get(r,'ubicaciones');
+      /* calle y altura en columnas separadas: se juntan en una sola dirección */
+      if(vs.length>1&&vs.some(v=>/^\d+$/.test(v)))vs=[vs.join(' ')];
+      for(const v of vs)for(const d of partirDirs(v))if(!dirs.includes(d))dirs.push(d)}
+    o.ubicaciones=dirs;return o}).filter(o=>o.titulo||o.zonas||o.ubicaciones.length||o.m2min||o.requisitos)}
+function renderImp(){const H=IX.hdr,ej=j=>[...new Set(IX.datos.map(r=>r[j]).filter(Boolean))].slice(0,3);
+  const B=armarBusquedas();IX.B=B;const nU=B.reduce((a,o)=>a+o.ubicaciones.length,0);const tieneDir=IX.map.includes('ubicaciones');
+  $('#i-prev').innerHTML=`
+   ${IX.hojas.length>1?`<label style="max-width:320px">Hoja de la planilla<select id="i-hoja">${IX.hojas.map(h=>`<option ${h===IX.hoja?'selected':''}>${esc(h)}</option>`).join('')}</select></label>`:''}
+   <div class="sec"><h3>1 · ¿Qué hay en cada columna?</h3><p class="hint" style="margin:0">Ya lo completamos según el nombre de cada columna. Revisalo y corregí lo que haga falta.</p>
+    <div class="tablewrap"><table class="mapt"><thead><tr><th>Tu columna</th><th>Ejemplos</th><th>Es…</th></tr></thead><tbody>
+    ${H.map((h,j)=>IX.usadas[j]?`<tr><td><b>${esc(h)}</b></td><td class="hint">${ej(j).map(esc).join(' · ')}</td><td><select data-j="${j}">${CAMPOS.map(([v,t])=>`<option value="${v}" ${IX.map[j]===v?'selected':''}>${t}</option>`).join('')}</select></td></tr>`:'').join('')}
+    </tbody></table></div></div>
+   <div class="sec"><h3>2 · ¿Cómo están armadas tus búsquedas?</h3>
+    <label class="opt"><input type="radio" name="i-modo" value="fila" ${IX.modo==='fila'?'checked':''}><span><b>Cada fila es una búsqueda</b><br><span class="hint">Si en una celda hay varias direcciones, separalas con | , ; o en renglones distintos.</span></span></label>
+    <label class="opt"><input type="radio" name="i-modo" value="agrupar" ${IX.modo==='agrupar'?'checked':''}><span><b>Cada fila es una ubicación</b><br><span class="hint">Juntamos en una misma búsqueda las filas que tienen igual
+      <select id="i-clave" style="width:auto;display:inline-block;padding:4px 8px">${H.map((h,j)=>IX.usadas[j]?`<option value="${j}" ${IX.clave===j?'selected':''}>${esc(h)}</option>`:'').join('')}</select></span></span></label></div>
+   <div class="sec"><h3>3 · Revisá</h3>
+    <p style="margin:0">Se van a crear <b>${B.length}</b> búsqueda${B.length===1?'':'s'} con <b>${nU}</b> ubicaci${nU===1?'ón':'ones'}.</p>
+    ${!tieneDir?'<p class="note" style="margin:0">No marcaste ninguna columna como <b>Dirección / esquina</b>: las búsquedas se crean sin ubicaciones y después las podés marcar en el mapa.</p>':''}
+    ${B.length?`<div class="tablewrap"><table><thead><tr><th>Búsqueda</th><th>Superficie</th><th>Zona</th><th>Ubicaciones</th></tr></thead><tbody>
+    ${B.slice(0,30).map(o=>`<tr><td>${o.titulo?esc(o.titulo):`<span class="hint">${esc([m2txt(o.m2min,o.m2max),o.zonas].filter(Boolean).join(' · ')||'Sin título')}</span>`}</td><td>${esc(m2txt(o.m2min,o.m2max))}</td><td>${esc(o.zonas)}</td><td>${o.ubicaciones.length?`<b>${o.ubicaciones.length}</b> · <span class="hint">${esc(o.ubicaciones.slice(0,2).join(' · '))}${o.ubicaciones.length>2?' …':''}</span>`:'<span class="hint">—</span>'}</td></tr>`).join('')}
+    </tbody></table></div>${B.length>30?`<p class="hint" style="margin:0">Y ${B.length-30} búsquedas más.</p>`:''}`:''}</div>`;
+  $$('#i-prev [data-j]').forEach(s=>s.onchange=()=>{IX.map[+s.dataset.j]=s.value;renderImp()});
+  $$('#i-prev [name=i-modo]').forEach(r=>r.onchange=()=>{IX.modo=r.value;renderImp()});
+  $('#i-clave').onchange=e=>{IX.clave=+e.target.value;IX.modo='agrupar';renderImp()};
+  const hs=$('#i-hoja');if(hs)hs.onchange=()=>usarHoja(hs.value);
+  const go=$('#i-go');go.disabled=!B.length;go.textContent=B.length?`Importar ${B.length} búsqueda${B.length===1?'':'s'}`:'Importar';go.onclick=importarGo}
+async function importarGo(){const msg=$('#i-msg'),go=$('#i-go'),B=IX.B;go.disabled=true;$$('#i-prev select,#i-prev input').forEach(x=>x.disabled=true);
+  const total=B.reduce((a,o)=>a+1+o.ubicaciones.length,0);let hecho=0,sinUbicar=0,hechas=0;
   $('#i-prev').insertAdjacentHTML('afterbegin','<div class="bar" style="margin-bottom:12px"><i id="i-bar"></i></div>');
   const tick=()=>{hecho++;$('#i-bar').style.width=(100*hecho/total)+'%';msg.textContent=`Importando… ${hecho} de ${total}`};
-  try{for(const o of IMP){
-      const op=/compra/i.test(o.operacion)?'Compra':'Alquiler',es=ESTADOS.find(e=>norm(e)===norm(o.estado))||'Activa';
-      const {data,error}=await sb.from('busquedas').insert({marca_id:S.marca.id,titulo:o.titulo||null,operacion:op,estado:es,m2min:num(o.m2min),m2max:num(o.m2max),frente_min:num(o.frente_min),alq_max_ars:num(o.alq_max_ars),alq_max_usd:num(o.alq_max_usd),zonas:o.zonas||null,requisitos:o.requisitos||null}).select('id').single();
+  try{for(const o of B){
+      const {data,error}=await sb.from('busquedas').insert({marca_id:S.marca.id,titulo:o.titulo||null,operacion:o.operacion,estado:o.estado,m2min:o.m2min,m2max:o.m2max,frente_min:o.frente_min,alq_max_ars:o.alq_max_ars,alq_max_usd:o.alq_max_usd,zonas:o.zonas||null,requisitos:o.requisitos||null}).select('id').single();
       if(error)throw error;tick();
-      const pts=[];for(const u of (o.ubicaciones||'').split('|').map(s=>s.trim()).filter(Boolean)){
+      const pts=[];for(const u of o.ubicaciones){
         let g=null;try{g=(await buscarGeo(u+(o.zonas&&!/argentina/i.test(u)?', '+o.zonas:'')))[0]||(await buscarGeo(u))[0]}catch(e){}
         const a=g?.address||{};if(!g)sinUbicar++;
         pts.push({busqueda_id:data.id,marca_id:S.marca.id,nombre:u,forma:g?'Punto':'Zona',estado:'Pendiente',lat:g?+(+g.lat).toFixed(6):null,lng:g?+(+g.lon).toFixed(6):null,barrio:barrioDe(a)||null});tick()}
-      if(pts.length){const {error:e2}=await sb.from('puntos').insert(pts);if(e2)throw e2}}
-    toast(`Importaste ${IMP.length} búsquedas`+(sinUbicar?` · ${sinUbicar} ubicaciones para marcar a mano`:''));cerrar();S.filtro='Todas';await loadBusq();
-  }catch(e){console.warn(e);msg.className='msg err';msg.textContent=`Se cortó la importación en la fila ${hecho}. Lo cargado hasta ahí quedó guardado; revisá la lista antes de reintentar.`;go.disabled=false;loadBusq()}}
+      if(pts.length){const {error:e2}=await sb.from('puntos').insert(pts);if(e2)throw e2}hechas++}
+    toast(`Importaste ${B.length} búsquedas`+(sinUbicar?` · ${sinUbicar} ubicaciones para marcar a mano`:''));cerrar();S.filtro='Todas';await loadBusq();
+  }catch(e){console.warn(e);msg.className='msg err';msg.textContent=`Se cortó la importación después de ${hechas} búsqueda${hechas===1?'':'s'}. Lo cargado hasta ahí quedó guardado; revisá la lista antes de reintentar.`;loadBusq()}}
 
 /* ---------------- panel del equipo ---------------- */
 function teTab(t){$('#te-marcas').setAttribute('aria-selected',t==='m');$('#te-locales').setAttribute('aria-selected',t==='l');$('#pe-marcas').hidden=t!=='m';$('#pe-locales').hidden=t!=='l'}
