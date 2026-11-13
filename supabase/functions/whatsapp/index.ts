@@ -2,13 +2,15 @@
 // Webhook de la API de WhatsApp (Meta). Atiende SOLO a quien escribe desde la web
 // ("Hola, vengo de la web de Madero Capital"), junta los datos básicos y le pasa la charla a Lucía.
 //
+// Conexión: a través de Kapso (coexistencia con la app de WhatsApp Business) o directo con Meta.
 // Secretos (Supabase → Edge Functions → Secrets):
-//   WA_TOKEN       token de acceso de la API de WhatsApp
+//   KAPSO_API_KEY  clave de API del proyecto de Kapso (si se usa Kapso)
 //   WA_PHONE_ID    id del número (Phone number ID)
-//   WA_APP_SECRET  clave secreta de la app de Meta (para validar la firma)
+//   WA_TOKEN / WA_APP_SECRET  solo si se conecta directo con Meta, sin Kapso
 // En la tabla public.wa_config (solo la lee esta función):
 //   verify   texto que se pone en "Verify token" al configurar el webhook
 //   prueba   clave para simular charlas sin mandar mensajes reales (header x-prueba)
+//   hook     clave que va en la URL del webhook (?k=...) cuando los mensajes llegan reenviados por Kapso
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
@@ -58,9 +60,11 @@ async function enviar(to: string, m: Out, prueba: Out[] | null) {
       action: { button: m.boton, sections: [{ title: "Opciones", rows: m.filas.map(([id, title, description]) =>
         ({ id, title, ...(description ? { description } : {}) })) }] } } };
   }
-  const r = await fetch(`https://graph.facebook.com/v21.0/${env("WA_PHONE_ID")}/messages`, {
+  const kapso = env("KAPSO_API_KEY");
+  const r = await fetch(kapso ? `https://api.kapso.ai/meta/whatsapp/v24.0/${env("WA_PHONE_ID")}/messages`
+    : `https://graph.facebook.com/v21.0/${env("WA_PHONE_ID")}/messages`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${env("WA_TOKEN")}`, "Content-Type": "application/json" },
+    headers: { ...(kapso ? { "X-API-Key": kapso } : { Authorization: `Bearer ${env("WA_TOKEN")}` }), "Content-Type": "application/json" },
     body: JSON.stringify({ messaging_product: "whatsapp", recipient_type: "individual", to, ...body }),
   });
   const j = await r.json().catch(() => ({}));
@@ -400,7 +404,9 @@ Deno.serve(async (req) => {
   const raw = await req.text();
   const testKey = await cfg("prueba");
   const prueba = testKey && req.headers.get("x-prueba") === testKey ? [] as Out[] : null;
-  if (!prueba && !(await firmaOk(raw, req.headers.get("x-hub-signature-256")))) return new Response("bad signature", { status: 401 });
+  const hook = await cfg("hook");
+  const porKapso = !!hook && url.searchParams.get("k") === hook;
+  if (!prueba && !porKapso && !(await firmaOk(raw, req.headers.get("x-hub-signature-256")))) return new Response("bad signature", { status: 401 });
 
   let body: any; try { body = JSON.parse(raw); } catch { return new Response("bad json", { status: 400 }); }
   try {
