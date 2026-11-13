@@ -138,6 +138,7 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
 /* whatsapp flotante */
 .wa{position:fixed;right:max(18px,env(safe-area-inset-right,0px));bottom:max(18px,env(safe-area-inset-bottom,0px));z-index:50;width:56px;height:56px;border-radius:50%;background:#25D366;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.2);transition:transform .15s ease}
 .wa:hover{transform:scale(1.06)}
+.wa.wa-emb{position:absolute;bottom:auto;top:0;opacity:0;transition:top .12s ease-out,opacity .2s}
 .wa svg{width:30px;height:30px;fill:#fff}
 
 /* bandeja: solo dueña */
@@ -574,6 +575,15 @@ if(API)fetch(API+'/rest/v1/rpc/puntos_publicos_v2',{method:'POST',headers:H,body
 const embedded=window.self!==window.top;
 function sendHeight(){if(embedded)try{parent.postMessage({maderoCorpoHeight:document.documentElement.scrollHeight},'*')}catch(e){}}
 new ResizeObserver(sendHeight).observe(document.body);addEventListener('load',sendHeight);
+
+/* botón de WhatsApp: dentro de la web el recuadro mide toda la página, así que lo ubicamos según la parte que se está viendo */
+if(embedded&&'IntersectionObserver' in window){const wa=document.querySelector('.wa');if(wa){
+  wa.classList.add('wa-emb');const box=document.createElement('div');box.setAttribute('aria-hidden','true');box.style.cssText='position:absolute;left:0;top:0;width:1px;pointer-events:none;visibility:hidden';document.body.appendChild(box);
+  const PASO=16,vis=new Set();let marcas=[];
+  const ubicar=()=>{if(!vis.size){wa.style.opacity='0';return}const lo=Math.max(...vis);wa.style.opacity='1';wa.style.top=Math.max(0,lo+PASO-76)+'px'};
+  const io=new IntersectionObserver(es=>{es.forEach(e=>{const y=+e.target.dataset.y;e.isIntersecting?vis.add(y):vis.delete(y)});ubicar()});
+  const armar=()=>{const h=document.documentElement.scrollHeight;if(marcas.length*PASO>=h)return;for(let y=marcas.length*PASO;y<h;y+=PASO){const m=document.createElement('i');m.dataset.y=y;m.style.cssText='position:absolute;left:0;width:1px;height:1px;top:'+y+'px';box.appendChild(m);marcas.push(m);io.observe(m)}};
+  armar();new ResizeObserver(armar).observe(document.body)}}
 
 /* barrio o localidad automático según la dirección del local */
 function autoBarrio(di,bi,hi){const dir=document.getElementById(di),bar=document.getElementById(bi),hint=document.getElementById(hi);if(!dir||!bar||!hint)return;
