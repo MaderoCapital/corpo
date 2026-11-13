@@ -129,12 +129,11 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
 
 /* contacto */
 .contacto{border-top:2px solid var(--ink);padding-top:22px;margin-bottom:80px}
-.contacto h2{font-size:26px;margin:6px 0 22px}
-.cgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:24px}
+.cgrid{display:flex;justify-content:space-between;gap:32px;margin-top:18px}
 .cgrid a,.cgrid p{display:block;margin:0;color:var(--ink);text-decoration:none;font-size:16px;line-height:1.7;overflow-wrap:anywhere}
 .cgrid a:hover{text-decoration:underline}
 .cgrid p.fsec{margin:0 0 6px;font-size:12px;line-height:1.4;color:var(--muted)}
-@media (max-width:720px){.cgrid{grid-template-columns:1fr;gap:18px}footer{padding-bottom:88px}}
+@media (max-width:720px){.cgrid{flex-direction:column;gap:18px}footer{padding-bottom:88px}}
 /* whatsapp flotante */
 .wa{position:fixed;right:max(18px,env(safe-area-inset-right,0px));bottom:max(18px,env(safe-area-inset-bottom,0px));z-index:50;width:56px;height:56px;border-radius:50%;background:#25D366;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(0,0,0,.2);transition:transform .15s ease}
 .wa:hover{transform:scale(1.06)}
@@ -257,11 +256,10 @@ footer .wrap{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
 
   <section class="contacto" id="contacto">
     <span class="label">Contacto</span>
-    <h2>Hablemos</h2>
     <div class="cgrid">
       <div><p class="fsec">Teléfonos</p><a href="tel:+5491157255183">11 5725-5183</a><a href="tel:+5491133289137">11 3328-9137</a></div>
       <div><p class="fsec">Email</p><a href="mailto:contact@maderocapital.com.ar">contact@maderocapital.com.ar</a></div>
-      <div><p class="fsec">Oficina</p><p>Camila O'Gorman 367<br>Puerto Madero, CABA</p></div>
+      <div><p class="fsec">Dirección</p><p>Camila O'Gorman 367<br>Puerto Madero, CABA</p></div>
     </div>
   </section>
 </main>
